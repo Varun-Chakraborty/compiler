@@ -1,23 +1,28 @@
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.Map;
 
 class Register {
     private int regs[];
     private int count;
+
     public Register(int count) {
-        if (count < 1 || count > 4) throw new IllegalArgumentException("Register count must be between 1 and 4");
+        if (count < 1 || count > 4)
+            throw new IllegalArgumentException("Register count must be between 1 and 4");
         this.count = count;
-        this.regs = new int[count];
+        regs = new int[count];
     }
+
     public void set(int register, int value) {
-        if (register < 0 || register > this.count-1) throw new IllegalArgumentException("Invalid register");
-        this.regs[register] = value;
+        if (register < 0 || register > count - 1)
+            throw new IllegalArgumentException("Invalid register");
+        regs[register] = value;
     }
+
     public int get(int register) {
-        if (register < 0 || register > this.count-1) throw new IllegalArgumentException("Invalid register");
-        return this.regs[register];
+        if (register < 0 || register > count - 1)
+            throw new IllegalArgumentException("Invalid register");
+        return regs[register];
     }
 }
 
@@ -25,139 +30,191 @@ class Memory {
     private int[] memory;
 
     public Memory(int size) {
-        this.memory = new int[size];
+        memory = new int[size];
+    }
+
+    public int size() {
+        return memory.length;
     }
 
     public void set(int address, int value) {
         if (address < 0 || address >= memory.length) {
             throw new IndexOutOfBoundsException("Memory address out of bounds");
         }
-        this.memory[address] = value;
+        memory[address] = value;
     }
 
     public int get(int address) {
         if (address < 0 || address >= memory.length) {
             throw new IndexOutOfBoundsException("Memory address out of bounds");
         }
-        return this.memory[address];
+        return memory[address];
+    }
+}
+
+class Instruction {
+    private int opcode;
+    private Map<Integer, Integer> symbolTable;
+    private int[] operands;
+    private int programCounter;
+
+    public Instruction(Memory memory, int programCounter) {
+        symbolTable = Map.of(
+                0x0, 2,
+                0x1, 2,
+                0x2, 3,
+                0x3, 3,
+                0x4, 0);
+        opcode = Integer.parseInt(
+                String.valueOf(memory.get(programCounter++)) +
+                        String.valueOf(memory.get(programCounter++)) +
+                        String.valueOf(memory.get(programCounter++)) +
+                        String.valueOf(memory.get(programCounter++)),
+                2);
+        if (!symbolTable.containsKey(opcode)) {
+            throw new IllegalArgumentException("Invalid opcode: " + opcode);
+        }
+        int operandCount = symbolTable.get(opcode);
+        operands = new int[operandCount];
+        for (int i = 0; i < operandCount; i++) {
+            if (i == 0) {
+                operands[i] = Integer.parseInt((String.valueOf(memory.get(programCounter++)) +
+                        String.valueOf(memory.get(programCounter++))), 2);
+            } else {
+                operands[i] = Integer.parseInt((String.valueOf(memory.get(programCounter++)) +
+                        String.valueOf(memory.get(programCounter++)) +
+                        String.valueOf(memory.get(programCounter++)) +
+                        String.valueOf(memory.get(programCounter++))), 2);
+            }
+        }
+        this.programCounter = programCounter;
+    }
+
+    public int getOpcode() {
+        return opcode;
+    }
+
+    public int[] getOperands() {
+        return operands;
+    }
+
+    public int getProgramCounter() {
+        return programCounter;
     }
 }
 
 class MyCPU {
     private int programCounter;
-    private Memory memory;
+    private int EOF = 0; // End of File
+    private Memory programMemory;
+    private Memory dataMemory;
     private Register register;
 
     public MyCPU() {
-        this.programCounter = 0;
-        this.register = new Register(4); // Initialize with 4 registers
-        this.memory = new Memory(256); // Initialize memory with 256 addresses
+        programCounter = 0;
+        register = new Register(4); // Initialize with 4 registers
+        programMemory = new Memory(256); // Initialize memory with 256 addresses
+        dataMemory = new Memory(256); // Initialize memory with 256 addresses
     }
 
     private void mover(int register, int memory) { // move to register
-        this.register.set(register, this.memory.get(memory));
-        this.programCounter++;
+        this.register.set(register, this.dataMemory.get(memory));
     }
 
     private void movem(int register, int memory) { // move to memory
-        this.memory.set(memory, this.register.get(register));
-        this.programCounter++;
+        this.dataMemory.set(memory, this.register.get(register));
     }
 
     private void add(int register, int sourceReg, int value) {
         this.register.set(register, this.register.get(sourceReg) + value);
-        this.programCounter++;
     }
 
     private void sub(int register, int sourceReg, int value) {
         this.register.set(register, this.register.get(sourceReg) - value);
-        this.programCounter++;
     }
 
-    public void opcodes(int opcode, int operand1, int operand2) {
+    public void opcodes(int opcode, int... operands) {
         switch (opcode) {
             case 0: // MOVER
-                this.mover(operand1, operand2);
+                mover(operands[0], operands[1]);
                 break;
             case 1: // MOVEM
-                this.movem(operand1, operand2);
+                movem(operands[0], operands[1]);
+                break;
+            case 2: // ADD
+                add(operands[0], operands[1], operands[2]);
+                break;
+            case 3: // SUB
+                sub(operands[0], operands[1], operands[2]);
+                break;
+            case 4: // HALT
+                programCounter = EOF; // Set program counter to EOF
                 break;
             default:
                 throw new IllegalArgumentException("Invalid opcode or lesser number of operands provided");
         }
     }
 
-    public void opcodes(int opcode, int operand1, int operand2, int operand3) {
-        switch (opcode) {
-            case 2: // ADD
-                this.add(operand1, operand2, operand3);
-                break;
-            case 3: // SUB
-                this.sub(operand1, operand2, operand3);
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid opcode");
+    public void loadBinaryFile(String filePath) {
+        try {
+            String binary = Files.readString(new File(filePath).toPath());
+            binary = String.join("", String.join("", binary.split("\n")).split(" "));
+            int i = 0;
+            if (binary.length() > programMemory.size()) {
+                throw new IllegalArgumentException("Binary file exceeds memory size");
+            }
+            while (i < binary.length()) {
+                programMemory.set(i, binary.charAt(i) - '0'); // Convert char to int
+                i++;
+            }
+            this.EOF = i;
+        } catch (Exception e) {
+            System.out.println("Error loading binary file: " + e.getMessage());
         }
     }
 
-    public void loadBinaryFile(String filePath) {
-        try {
-            String content = new String(Files.readAllBytes(Paths.get(filePath)));
-            String[] instructions = content.split("\n");
-            if (instructions.length == 0) {
-                throw new IllegalArgumentException("No instructions found in the file");
+    public void run() {
+        while (programCounter < programMemory.size() && programCounter < EOF) {
+            if (programCounter == EOF) {
+                break; // Stop execution if EOF is reached
             }
-            // Process each instruction
-            this.programCounter = 0; // Reset program counter before execution
-            for (int i = 0; i < instructions.length; i++) {
-                String instruction[] = instructions[i].split(" ");
-                if (instruction.length < 3 || instruction.length > 4) {
-                    throw new IllegalArgumentException("Invalid instruction length: " + instruction);
-                }
-                int opcode = Integer.parseInt(instruction[0], 2);
-                int operand1 = Integer.parseInt(instruction[1], 2);
-                int operand2 = Integer.parseInt(instruction[2], 2);
-                if (instruction.length > 3) {
-                    int operand3 = Integer.parseInt(instruction[3], 2);
-                    this.opcodes(opcode, operand1, operand2, operand3);
-                } else {
-                    this.opcodes(opcode, operand1, operand2);
-                }
+            try {
+                Instruction instruction = new Instruction(
+                        programMemory,
+                        programCounter);
+                int opcode = instruction.getOpcode();
+                int[] operands = instruction.getOperands();
+                System.out.println("Executing instruction at PC " + programCounter + ": Opcode = " + opcode
+                        + ", Operands = " + java.util.Arrays.toString(operands));
+                programCounter = instruction.getProgramCounter();
+                opcodes(opcode, operands);
+            } catch (Exception e) {
+                System.out.println("Error executing instruction at PC " + programCounter + ":" + e.getMessage());
+                break; // Stop execution on error
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (NumberFormatException e) {
-            System.err.println("Error parsing binary file: " + e.getMessage());
-        } catch (IllegalArgumentException e) {
-            System.err.println("Error in opcode or operands: " + e.getMessage());
         }
     }
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.err.println("Please provide the path to the binary file.");
-            return;
+            // System.err.println("Please provide the path to the binary file.");
+            // return;
+            args = new String[1];
+            args[0] = "./index.bin"; // For testing purposes, hardcoded path
         }
         MyCPU cpu = new MyCPU();
-        cpu.memory.set(0, 15); // Initialize memory for testing
+        cpu.dataMemory.set(0, 15); // Initialize memory for testing
         cpu.loadBinaryFile(args[0]);
-        System.out.println("Program executed successfully.");
+        cpu.run();
+        // read memory state
+        System.out.println("Final state of data memory:");
+        for (int i = 0; i < cpu.dataMemory.size(); i++) {
+            if (cpu.dataMemory.get(i) != 0)
+                System.out.println("Address " + i + ": " + cpu.dataMemory.get(i));
+        }
         System.out.println("Final state of registers:");
         for (int i = 0; i < 4; i++) {
-            System.out.println("Register " + (char)(i+65) + ": " + cpu.register.get(i));
-        }
-        System.out.println("Program Counter: " + cpu.programCounter);
-        System.out.println("Memory contents:");
-        // Print non-zero memory contents
-        boolean isThereAnyNonZero = false;
-        for (int i = 0; i < 256; i++) {
-            if (cpu.memory.get(i) != 0) {
-                isThereAnyNonZero = true;
-                System.out.println("Memory[" + i + "] = " + cpu.memory.get(i));
-            }
-        }
-        if (!isThereAnyNonZero) {
-            System.out.println("Memory is empty.");
+            System.out.println("Register " + i + ": " + cpu.register.get(i));
         }
     }
 }
