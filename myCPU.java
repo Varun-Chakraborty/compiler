@@ -189,7 +189,7 @@ class MyCPU {
                 programCounter = instruction.getProgramCounter();
                 opcodes(opcode, operands);
             } catch (Exception e) {
-                System.out.println("Error executing instruction at PC " + programCounter + ":" + e.getMessage());
+                System.out.println("Error executing instruction at PC " + programCounter + ": " + e.getMessage());
                 break; // Stop execution on error
             }
         }
@@ -197,24 +197,11 @@ class MyCPU {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            // System.err.println("Please provide the path to the binary file.");
-            // return;
-            args = new String[1];
-            args[0] = "./index.bin"; // For testing purposes, hardcoded path
+            System.err.println("Please provide the path to the binary file.");
+            return;
         }
         MyCPU cpu = new MyCPU();
-        cpu.dataMemory.set(0, 15); // Initialize memory for testing
         cpu.loadBinaryFile(args[0]);
         cpu.run();
-        // read memory state
-        System.out.println("Final state of data memory:");
-        for (int i = 0; i < cpu.dataMemory.size(); i++) {
-            if (cpu.dataMemory.get(i) != 0)
-                System.out.println("Address " + i + ": " + cpu.dataMemory.get(i));
-        }
-        System.out.println("Final state of registers:");
-        for (int i = 0; i < 4; i++) {
-            System.out.println("Register " + i + ": " + cpu.register.get(i));
-        }
     }
 }
