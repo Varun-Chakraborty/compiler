@@ -33,21 +33,21 @@ This project is being built to learn **system software** and understand **how CP
     `<4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>]]`
 - Symbol table mapping for opcodes (categorised based on argument it takes):
 
-    **1. No Argument**
+    1. **No Argument**
     ```
     HALT -> 4
     ```
-    **2. One Argument**
+    2. **One Argument**
     ```
     IN -> 5
     OUT -> 6
     ```
-    **3. Two arguments**
+    3. **Two arguments**
     ```
     MOVER -> 0
     MOVEM -> 1
     ```
-    **4. Three arguments**
+    4. **Three arguments**
     ```
     ADD -> 2
     SUB -> 3
@@ -61,14 +61,18 @@ This project is being built to learn **system software** and understand **how CP
 
     Example: `ADD R0, 5`
     - This means: add the value at memory location `5` to register `R0`.
-
-2. **Assemble**
- Run the assembler to convert your `.asm` file into a `.bin` file:
+2. **Compile the machines**
     ```bash
-    java assembler.MyAssembler program.asm
+    javac assembler/*.java cpu/*.java
+    ```
+3. **Assemble**
+
+    Run the assembler to convert your `.asm` file into a `.bin` file:
+    ```bash
+    java assembler.MyAssembler index.asm
     This produces output.bin containing only '0' and '1' characters.
     ```
-3. **Run on CPU**
+4. **Run on CPU**
 
     Pass output.bin to the CPU simulator:
     ```
@@ -77,7 +81,7 @@ This project is being built to learn **system software** and understand **how CP
     The CPU will:
     - Load the program into instruction memory.
     - Fetch, decode, and execute each instruction.
-- Print debug output showing execution flow and final state.
+    - Print debug output showing execution flow and final state.
 ### Example
 **program.asm**
 ```
@@ -100,18 +104,21 @@ Register 1: 0
 Register 2: 0
 Register 3: 0
 ```
-### Current Limitations
+---
+## Current Limitations
 - `.bin` file is not true binary — it stores ASCII '0'/'1' characters (1 byte each).
 - No labels or jumps — programs execute sequentially.
 - No branching or conditional execution.
 - Input/Output is basic (manual IN and OUT instructions).
-### Future Improvements
+---
+## Future Improvements
 - Pack bits into actual binary format to reduce file size.
 - Add labels and a symbol resolution system.
 - Implement branching/jump instructions.
 - Create a REPL for live assembly and execution.
 - Support for more registers and larger memory space.
-### Motivation
+---
+## Motivation
 "Feels good to write 0s and 1s and see them do something."
 
 This project is a practical step toward learning system software by building a CPU from scratch, understanding the fetch-decode-execute cycle, and bridging theory with a working implementation.
