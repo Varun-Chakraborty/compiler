@@ -1,22 +1,24 @@
+package src.cpu;
+
 import java.io.*;
 import java.nio.file.Files;
 import java.util.Map;
 
 class Register {
-    private int regs[];
+    private byte regs[];
     private int count;
 
     public Register(int count) {
         if (count < 1 || count > 4)
             throw new IllegalArgumentException("Register count must be between 1 and 4");
         this.count = count;
-        regs = new int[count];
+        regs = new byte[count];
     }
 
     public void set(int register, int value) {
         if (register < 0 || register > count - 1)
             throw new IllegalArgumentException("Invalid register");
-        regs[register] = value;
+        regs[register] = (byte) value;
     }
 
     public int get(int register) {
@@ -64,7 +66,9 @@ class Instruction {
                 0x1, 2,
                 0x2, 3,
                 0x3, 3,
-                0x4, 0);
+                0x4, 0,
+                0x5, 1,
+                0x6, 1);
         opcode = Integer.parseInt(
                 String.valueOf(memory.get(programCounter++)) +
                         String.valueOf(memory.get(programCounter++)) +
@@ -103,7 +107,7 @@ class Instruction {
     }
 }
 
-class MyCPU {
+public class MyCPU {
     private int programCounter;
     private int EOF = 0; // End of File
     private Memory programMemory;
@@ -133,6 +137,17 @@ class MyCPU {
         this.register.set(register, this.register.get(sourceReg) - value);
     }
 
+    private void in(int register) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+            System.out.print("Enter value for register " + register + ": ");
+            String input = reader.readLine();
+            int value = Integer.parseInt(input);
+            this.register.set(register, value);
+        } catch (IOException | NumberFormatException e) {
+            System.out.println("Error reading input: " + e.getMessage());
+        }
+    }
+
     public void opcodes(int opcode, int... operands) {
         switch (opcode) {
             case 0: // MOVER
@@ -149,6 +164,12 @@ class MyCPU {
                 break;
             case 4: // HALT
                 programCounter = EOF; // Set program counter to EOF
+                break;
+            case 5: // IN
+                in(operands[0]);
+                break;
+            case 6: // OUT
+                System.out.println("Output from register " + operands[0] + ": " + register.get(operands[0]));
                 break;
             default:
                 throw new IllegalArgumentException("Invalid opcode or lesser number of operands provided");
@@ -173,7 +194,7 @@ class MyCPU {
         }
     }
 
-    public void run() {
+    public void run(boolean debug) {
         while (programCounter < programMemory.size() && programCounter < EOF) {
             if (programCounter == EOF) {
                 break; // Stop execution if EOF is reached
@@ -184,8 +205,10 @@ class MyCPU {
                         programCounter);
                 int opcode = instruction.getOpcode();
                 int[] operands = instruction.getOperands();
-                System.out.println("Executing instruction at PC " + programCounter + ": Opcode = " + opcode
-                        + ", Operands = " + java.util.Arrays.toString(operands));
+                if (debug) {
+                    System.out.println("Executing instruction at PC " + programCounter + ": Opcode = " + opcode
+                            + ", Operands = " + java.util.Arrays.toString(operands));
+                }
                 programCounter = instruction.getProgramCounter();
                 opcodes(opcode, operands);
             } catch (Exception e) {
@@ -202,6 +225,19 @@ class MyCPU {
         }
         MyCPU cpu = new MyCPU();
         cpu.loadBinaryFile(args[0]);
-        cpu.run();
+        System.out.println("Binary file loaded successfully. Starting execution...");
+        boolean debug = args.length > 1 && args[1].equals("--debug");
+        if (debug)
+            System.out.println("Debug mode enabled.");
+        cpu.run(debug);
+        if (debug) {
+            System.out.println("Execution completed.");
+            System.out.println("Final Register State: ");
+            for (int i = 0; i < 4; i++) {
+                System.out.println("Register " + i + ": " + cpu.register.get(i));
+            }
+            System.out.println("Program Counter: " + cpu.programCounter);
+            System.out.println("End of Execution.");
+        }
     }
 }
