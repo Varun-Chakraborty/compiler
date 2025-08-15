@@ -124,6 +124,11 @@ Register 3: 30
 Program Counter: 84
 End of Execution.
 ```
+Such output shows up if you run the CPU in debug mode i.e. with `-debug` flag:
+```bash
+java src.cpu.MyCPU output.bin --debug
+```
+
 ---
 ## Current Limitations
 - `.bin` file is not true binary — it stores ASCII '0'/'1' characters (1 byte each).
