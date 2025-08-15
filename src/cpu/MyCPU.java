@@ -81,7 +81,7 @@ class Instruction {
         int operandCount = symbolTable.get(opcode);
         operands = new int[operandCount];
         for (int i = 0; i < operandCount; i++) {
-            if (i == 0) {
+            if (i == 0 || (i == 1 && (opcode == 2 || opcode == 3))) {
                 operands[i] = Integer.parseInt((String.valueOf(memory.get(programCounter++)) +
                         String.valueOf(memory.get(programCounter++))), 2);
             } else {
@@ -113,6 +113,7 @@ public class MyCPU {
     private Memory programMemory;
     private Memory dataMemory;
     private Register register;
+    private boolean debug;
 
     public MyCPU() {
         programCounter = 0;
@@ -129,16 +130,17 @@ public class MyCPU {
         this.dataMemory.set(memory, this.register.get(register));
     }
 
-    private void add(int register, int sourceReg, int value) {
-        this.register.set(register, this.register.get(sourceReg) + value);
+    private void add(int register, int sourceReg, int memAdd) {
+        this.register.set(register, this.register.get(sourceReg) + dataMemory.get(memAdd));
     }
 
-    private void sub(int register, int sourceReg, int value) {
-        this.register.set(register, this.register.get(sourceReg) - value);
+    private void sub(int register, int sourceReg, int memAdd) {
+        this.register.set(register, this.register.get(sourceReg) - dataMemory.get(memAdd));
     }
 
     private void in(int register) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.print("Enter value for register " + register + ": ");
             String input = reader.readLine();
             int value = Integer.parseInt(input);
@@ -226,11 +228,11 @@ public class MyCPU {
         MyCPU cpu = new MyCPU();
         cpu.loadBinaryFile(args[0]);
         System.out.println("Binary file loaded successfully. Starting execution...");
-        boolean debug = args.length > 1 && args[1].equals("--debug");
-        if (debug)
+        cpu.debug = args.length > 1 && args[1].equals("--debug");
+        if (cpu.debug)
             System.out.println("Debug mode enabled.");
-        cpu.run(debug);
-        if (debug) {
+        cpu.run(cpu.debug);
+        if (cpu.debug) {
             System.out.println("Execution completed.");
             System.out.println("Final Register State: ");
             for (int i = 0; i < 4; i++) {

@@ -6,6 +6,7 @@ import java.util.Map;
 
 public class MyAssembler {
     private Map<String, Integer> symbolTable;
+    private boolean debug ;
 
     MyAssembler() {
         this.symbolTable = Map.of(
@@ -16,6 +17,7 @@ public class MyAssembler {
                 "HALT", 4,
                 "IN", 5,
                 "OUT", 6);
+        this.debug = false;
     }
 
     private String convertToBinary(String value, int size) {
@@ -60,7 +62,7 @@ public class MyAssembler {
                 }
                 statement = statement.split(";")[0];
                 statement = statement.trim();
-                System.out.println("Processing statement: " + statement);
+                if (debug) System.out.println("Processing statement: " + statement);
                 String opcode = statement.split(" ")[0];
                 if (!symbolTable.containsKey(opcode)) {
                     throw new IllegalArgumentException("Unknown opcode: " + opcode + " in statement: " + statement);
@@ -69,6 +71,7 @@ public class MyAssembler {
                 try {
                     String operands[] = statement.substring(statement.indexOf(' ') + 1).split(",");
                     for (int i = 0; i < operands.length; i++) {
+                        if (debug) writer.write(" ");
                         operands[i] = operands[i].trim();
                         if (operands[i].startsWith("R")) {
                             String regNum = convertToBinary(operands[i].substring(1), 2);
@@ -80,8 +83,9 @@ public class MyAssembler {
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("No operands found for statement: " + statement);
+                    if (debug) System.out.println("No operands found for statement: " + statement);
                 }
+                if (debug) writer.newLine();
             }
         } catch (IOException e) {
             System.err.println("Error reading assembly file: " + e.getMessage());
@@ -104,6 +108,12 @@ public class MyAssembler {
             return;
         }
         MyAssembler assembler = new MyAssembler();
+        if (args.length > 1 && args[1].equals("--debug")) {
+            assembler.debug = true;
+        }
+        if (assembler.debug) {
+            System.out.println("Debug mode enabled.");
+        }
         String binaryFilePath = assembler.assemble(args[0]);
         System.out.println("Binary file created at: " + binaryFilePath);
     }

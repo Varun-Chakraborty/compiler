@@ -59,8 +59,10 @@ This project is being built to learn **system software** and understand **how CP
 
 1. **Write Assembly**
 
-    Example: `ADD R0, 5`
-    - This means: add the value at memory location `5` to register `R0`.
+    Example: `ADD R0, R1, 0`
+    - This means: add the value at memory location `0` with value at register `R1` and store the result in register `R0`.
+
+    I have already prepared the example assembly code and is present in this repository as `index.asm`.
 2. **Compile the machines**
     ```bash
     javac src/assembler/*.java src/cpu/*.java
@@ -70,8 +72,8 @@ This project is being built to learn **system software** and understand **how CP
     Run the assembler to convert your `.asm` file into a `.bin` file:
     ```bash
     java src.assembler.MyAssembler index.asm
-    This produces output.bin containing only '0' and '1' characters.
     ```
+    This produces output.bin containing only '0' and '1' characters.
 4. **Run on CPU**
 
     Pass output.bin to the CPU simulator:
@@ -85,24 +87,42 @@ This project is being built to learn **system software** and understand **how CP
 ### Example
 **program.asm**
 ```
-IN R0, 5       ; Load value 5 into R0
-ADD R0, 1      ; Add memory[1] to R0
-MOVEM R0, 0    ; Store R0 into memory[0]
-HALT           ; Stop execution
+IN R2           ; input to register 2
+MOVEM R2, 0     ; move to memory address 0 from register 2
+IN R2           ; input to register 2
+MOVEM R2, 1     ; move to memory address 1 from register 2
+MOVER R1, 0     ; move to register 1 from memory address 0
+ADD R0, R1, 1   ; add value stored in register 1 to value stored in memory address 1 and store in register 0
+MOVEM R0, 0     ; move to memory address 0 from register 0
+MOVER R3, 0     ; move to register 3 from memory address 0
+OUT R3          ; output the value stored in register 3
+HALT            ; end the program
 ```
 **Output**
 ```
-Executing instruction at PC 0: Opcode = 5, Operands = [0, 5]
-Executing instruction at PC 10: Opcode = 2, Operands = [0, 1, 5]
-Executing instruction at PC 24: Opcode = 1, Operands = [0, 0]
-Executing instruction at PC 34: Opcode = 4, Operands = []
-Final state of data memory:
-Address 0: 5
-Final state of registers:
-Register 0: 5
-Register 1: 0
-Register 2: 0
-Register 3: 0
+Binary file loaded successfully. Starting execution...
+Debug mode enabled.
+Executing instruction at PC 0: Opcode = 5, Operands = [2]
+Enter value for register 2: 15
+Executing instruction at PC 6: Opcode = 1, Operands = [2, 0]
+Executing instruction at PC 16: Opcode = 5, Operands = [2]
+Enter value for register 2: 15
+Executing instruction at PC 22: Opcode = 1, Operands = [2, 1]
+Executing instruction at PC 32: Opcode = 0, Operands = [1, 0]
+Executing instruction at PC 42: Opcode = 2, Operands = [0, 1, 1]
+Executing instruction at PC 54: Opcode = 1, Operands = [0, 0]
+Executing instruction at PC 64: Opcode = 0, Operands = [3, 0]
+Executing instruction at PC 74: Opcode = 6, Operands = [3]
+Output from register 3: 30
+Executing instruction at PC 80: Opcode = 4, Operands = []
+Execution completed.
+Final Register State: 
+Register 0: 30
+Register 1: 15
+Register 2: 15
+Register 3: 30
+Program Counter: 84
+End of Execution.
 ```
 ---
 ## Current Limitations
