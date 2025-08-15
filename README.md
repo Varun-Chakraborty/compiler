@@ -63,20 +63,20 @@ This project is being built to learn **system software** and understand **how CP
     - This means: add the value at memory location `5` to register `R0`.
 2. **Compile the machines**
     ```bash
-    javac assembler/*.java cpu/*.java
+    javac src/assembler/*.java src/cpu/*.java
     ```
 3. **Assemble**
 
     Run the assembler to convert your `.asm` file into a `.bin` file:
     ```bash
-    java assembler.MyAssembler index.asm
+    java src.assembler.MyAssembler index.asm
     This produces output.bin containing only '0' and '1' characters.
     ```
 4. **Run on CPU**
 
     Pass output.bin to the CPU simulator:
     ```
-    java cpu.MyCPU output.bin
+    java src.cpu.MyCPU output.bin
     ```
     The CPU will:
     - Load the program into instruction memory.
