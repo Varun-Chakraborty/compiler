@@ -55,6 +55,7 @@ This project is being built to learn **system software** and understand **how CP
 ---
 
 ## How It Works
+<img width="1619" height="502" alt="c81c3311-c1da-4d1e-92e3-f5261516a11b" src="https://github.com/user-attachments/assets/b2ff68ea-197e-4c1d-90fc-007955a14c71" />
 
 1. **Write Assembly**
 
@@ -112,4 +113,5 @@ Register 3: 0
 - Support for more registers and larger memory space.
 ### Motivation
 "Feels good to write 0s and 1s and see them do something."
+
 This project is a practical step toward learning system software by building a CPU from scratch, understanding the fetch-decode-execute cycle, and bridging theory with a working implementation.
