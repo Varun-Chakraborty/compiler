@@ -6,7 +6,10 @@ import java.util.Map;
 
 public class MyAssembler {
     private Map<String, Integer> symbolTable;
-    private boolean debug ;
+    private boolean debug;
+    private boolean pretty;
+    private byte buffer = 0;
+    private int bufferIndex = 0;
 
     MyAssembler() {
         this.symbolTable = Map.of(
@@ -41,8 +44,7 @@ public class MyAssembler {
     }
 
     private String assemble(String filePath) {
-        // create or open the binary file
-        String path = "output.bin";
+        String path = filePath.replace(".asm", ".bin");
         File binaryFile = new File(path);
         if (binaryFile.exists()) {
             binaryFile.delete(); // clear the file if it exists
@@ -71,7 +73,7 @@ public class MyAssembler {
                 try {
                     String operands[] = statement.substring(statement.indexOf(' ') + 1).split(",");
                     for (int i = 0; i < operands.length; i++) {
-                        if (debug) writer.write(" ");
+                        if (debug && pretty) writer.write(" ");
                         operands[i] = operands[i].trim();
                         if (operands[i].startsWith("R")) {
                             String regNum = convertToBinary(operands[i].substring(1), 2);
@@ -85,16 +87,15 @@ public class MyAssembler {
                 } catch (Exception e) {
                     if (debug) System.out.println("No operands found for statement: " + statement);
                 }
-                if (debug) writer.newLine();
+                if (debug && pretty) writer.newLine();
             }
         } catch (IOException e) {
             System.err.println("Error reading assembly file: " + e.getMessage());
             return null;
         } finally {
             try {
-                if (writer != null) {
-                    writer.close();
-                }
+                writer.flush();
+                writer.close();
             } catch (IOException e) {
                 System.err.println("Error closing writer: " + e.getMessage());
             }
@@ -111,8 +112,14 @@ public class MyAssembler {
         if (args.length > 1 && args[1].equals("--debug")) {
             assembler.debug = true;
         }
+        if (args.length > 2 && args[2].equals("--pretty")) {
+            assembler.pretty = true;
+        }
         if (assembler.debug) {
             System.out.println("Debug mode enabled.");
+        }
+        if (assembler.pretty) {
+            System.out.println("ASCII binary would be prettified.");
         }
         String binaryFilePath = assembler.assemble(args[0]);
         System.out.println("Binary file created at: " + binaryFilePath);
