@@ -1,7 +1,10 @@
 package src.cpu;
 
-import java.io.*;
-import java.nio.file.Files;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Map;
 
 class Register {
@@ -179,28 +182,37 @@ public class MyCPU {
     }
 
     public void loadBinaryFile(String filePath) {
+        BufferedInputStream inputStream = null;
         try {
-            String binary = Files.readString(new File(filePath).toPath());
-            binary = String.join("", String.join("", binary.split("\n")).split(" "));
-            int i = 0;
-            if (binary.length() > programMemory.size()) {
-                throw new IllegalArgumentException("Binary file exceeds memory size");
+            inputStream = new BufferedInputStream(new FileInputStream(filePath));
+            while (inputStream.available() > 1) {
+                byte byteRead = (byte) inputStream.read();
+                for(int i = 0; i < 8; i++) {
+                    int bit = (byteRead >> (7 - i)) & 1;
+                    programMemory.set(programCounter++, bit);
+                    if (programCounter >= programMemory.size()) {
+                        System.out.println("Program memory overflow. Stopping load.");
+                        return;
+                    }
+                }
             }
-            while (i < binary.length()) {
-                programMemory.set(i, binary.charAt(i) - '0'); // Convert char to int
-                i++;
-            }
-            this.EOF = i;
-        } catch (Exception e) {
+            EOF = inputStream.read(); // Read EOF byte; last byte indicates EOF
+            programCounter = 0; // Reset program counter after loading
+            System.out.println("Binary file loaded successfully. Starting execution...");
+
+        } catch (IOException e) {
             System.out.println("Error loading binary file: " + e.getMessage());
+        } finally {
+            try {
+                inputStream.close();
+            } catch (IOException e) {
+                System.out.println("Error closing input stream: " + e.getMessage());
+            }
         }
     }
 
-    public void run(boolean debug) {
+    public void run() {
         while (programCounter < programMemory.size() && programCounter < EOF) {
-            if (programCounter == EOF) {
-                break; // Stop execution if EOF is reached
-            }
             try {
                 Instruction instruction = new Instruction(
                         programMemory,
@@ -226,12 +238,11 @@ public class MyCPU {
             return;
         }
         MyCPU cpu = new MyCPU();
-        cpu.loadBinaryFile(args[0]);
-        System.out.println("Binary file loaded successfully. Starting execution...");
         cpu.debug = args.length > 1 && args[1].equals("--debug");
         if (cpu.debug)
             System.out.println("Debug mode enabled.");
-        cpu.run(cpu.debug);
+        cpu.loadBinaryFile(args[0]);
+        cpu.run();
         if (cpu.debug) {
             System.out.println("Execution completed.");
             System.out.println("Final Register State: ");

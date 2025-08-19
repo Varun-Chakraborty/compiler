@@ -25,6 +25,7 @@ This project is being built to learn **system software** and understand **how CP
 - Keeps track of:
     - **Registers** (R0, R1, R2, R3)
     - **Data memory**
+    - **Program memory**
     - **Program counter (PC)**
 
 - Supports two modes:
@@ -88,6 +89,7 @@ This project is being built to learn **system software** and understand **how CP
     - **Normal mode**: Converts assembly to binary without debug info.
     - **Debug mode**: Outputs detailed assembly-to-binary conversion steps. (`--debug` flag.)
     - **Pretty Debug mode**: Outputs human-readable assembly code alongside binary. (`--debug --pretty` flags.)
+    
     NOTE: pretty flag has to be preceded by debug flag else it will not work.
 ---
 
@@ -111,14 +113,16 @@ This project is being built to learn **system software** and understand **how CP
     java src.assembler.MyAssembler index.asm
     ```
     This produces raw binary in output.bin.
-    Note: The assembler also generates a `.txt` file with ASCII `0` and `1` bits if run in debug mode.
-    1. ```bash
+    
+    Note:
+    1. The assembler also generates a `.txt` file with ASCII `0` and `1` bits if run in debug mode.
+        ```bash
         java src.assembler.MyAssembler index.asm --debug --pretty
         ```
         This produces a human-readable binary alongside the raw binary in output.txt.
     2. We have also added a script in the root of the repository to convert the raw binary to ASCII `0` and `1` bits:
         ```bash
-        python3 src/assembler/binary_to_ascii.py output.bin
+        python3 convertBinToASCIIBin.py output.bin
         ```
         This will print the ASCII representation of the binary to the console.
 
@@ -126,7 +130,7 @@ This project is being built to learn **system software** and understand **how CP
 
     Pass output.bin to the CPU simulator:
     ```
-    java src.cpu.MyCPU output.txt #(the cpu is yet to understand raw binary, so we use the ascii binary stored in output.txt for now)
+    java src.cpu.MyCPU output.bin
     ```
     The CPU will:
     - Load the program into instruction memory.
@@ -180,17 +184,16 @@ java src.cpu.MyCPU output.bin --debug
 ---
 
 ## Verification
-The python script `src/assembler/binary_to_ascii.py` can be used to verify the binary output by converting it to ASCII `0` and `1` bits.
+The python script `convertBinToASCIIBin.py.py` can be used to verify the binary output by converting it to ASCII `0` and `1` bits.
 Run it as follows:
 ```bash
-python3 src/assembler/binary_to_ascii.py output.bin
+python3 convertBinToASCIIBin.py.py output.bin
 ```
 This will print the ASCII representation of the binary to the console, which can be compared with the expected output.
 
 _This step is optional and mainly for debugging or cross-checking the assembler’s output._
 
 ## Current Limitations
-- While assember can now generate raw binary, the same implementation is yet to be implemented for the CPU. It currently reads ASCII `0` and `1` bits from a text file.
 - No labels or jumps — programs execute sequentially.
 - No branching or conditional execution.
 - Input/Output is basic (manual IN and OUT instructions).

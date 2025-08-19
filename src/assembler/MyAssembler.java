@@ -17,6 +17,7 @@ class Writer {
     private byte buffer;
     private int bufferSize = 0;
     private static final int BUFFER_SIZE = 8; // Size of the buffer in bits
+    private byte bitsWritten = 0;
 
     public Writer(boolean debug, boolean pretty) throws IOException {
         this.debug = debug;
@@ -34,6 +35,7 @@ class Writer {
                 buffer <<= (BUFFER_SIZE - bufferSize);
             }
             // Write the buffer to the output stream
+            bitsWritten += bufferSize;
             outputStream.write(buffer);
             buffer = 0; // Reset buffer
             bufferSize = 0; // Reset buffer size
@@ -90,6 +92,7 @@ class Writer {
 
     public void close() throws IOException {
         flush();
+        outputStream.write(bitsWritten);
         outputStream.close();
         if (debug) {
             writer.close();
