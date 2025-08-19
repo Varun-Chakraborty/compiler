@@ -1,3 +1,4 @@
 # class files in the root or child directories
 *.class
 *.bin
+*.txt

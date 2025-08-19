@@ -27,31 +27,68 @@ This project is being built to learn **system software** and understand **how CP
     - **Data memory**
     - **Program counter (PC)**
 
+- Supports two modes:
+    - **Normal mode**: Executes instructions sequentially.
+    - **Debug mode**: Prints detailed execution steps.
+
 ### Assembler
-- Converts `.asm` source files into `.bin` files of ASCII `0` and `1` bits.
+- Converts `.asm` source files into `.bin` file of raw binary always and `.txt` files of ASCII `0` and `1` bits in `--debug` mode and `--pretty` mode.
 - Instruction format:  
     `<4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>]]`
-- Symbol table mapping for opcodes (categorised based on argument it takes):
+- Symbol table mapping for opcodes:
+    <table>
+        <tr>
+            <th>Opcode</th>
+            <th>Mnemonic</th>
+            <th>Arguments</th>
+        </tr>
+        <tr>
+            <td>0000</td>
+            <td>MOVER</td>
+            <td>2 (R, M)</td>
+        </tr>
+        <tr>
+            <td>0001</td>
+            <td>MOVEM</td>
+            <td>2 (R, M)</td>
+        </tr>
+        <tr>
+            <td>0010</td>
+            <td>ADD</td>
+            <td>3 (R, R, M)</td>
+        </tr>
+        <tr>
+            <td>0011</td>
+            <td>SUB</td>
+            <td>3 (R, R, M)</td>
+        </tr>
+        <tr>
+            <td>0100</td>
+            <td>HALT</td>
+            <td>0</td>
+        </tr>
+        <tr>
+            <td>0101</td>
+            <td>IN</td>
+            <td>1 (R)</td>
+        </tr>
+        <tr>
+            <td>0110</td>
+            <td>OUT</td>
+            <td>1 (R)</td>
+        </tr>
+    </table>
 
-    1. **No Argument**
-    ```
-    HALT -> 4
-    ```
-    2. **One Argument**
-    ```
-    IN -> 5
-    OUT -> 6
-    ```
-    3. **Two arguments**
-    ```
-    MOVER -> 0
-    MOVEM -> 1
-    ```
-    4. **Three arguments**
-    ```
-    ADD -> 2
-    SUB -> 3
-    ```
+- Operand format:
+    - **Opcode**: 4 bits (0-15)
+    - **Register**: 2 bits (R0 = 00, R1 = 01, R2 = 10, R3 = 11)
+    - **Memory Address**: 4 bits (0-15)
+
+- Supports three modes:
+    - **Normal mode**: Converts assembly to binary without debug info.
+    - **Debug mode**: Outputs detailed assembly-to-binary conversion steps. (`--debug` flag.)
+    - **Pretty Debug mode**: Outputs human-readable assembly code alongside binary. (`--debug --pretty` flags.)
+    NOTE: pretty flag has to be preceded by debug flag else it will not work.
 ---
 
 ## How It Works
@@ -73,12 +110,23 @@ This project is being built to learn **system software** and understand **how CP
     ```bash
     java src.assembler.MyAssembler index.asm
     ```
-    This produces output.bin containing only '0' and '1' characters.
+    This produces raw binary in output.bin.
+    Note: The assembler also generates a `.txt` file with ASCII `0` and `1` bits if run in debug mode.
+    1. ```bash
+        java src.assembler.MyAssembler index.asm --debug --pretty
+        ```
+        This produces a human-readable binary alongside the raw binary in output.txt.
+    2. We have also added a script in the root of the repository to convert the raw binary to ASCII `0` and `1` bits:
+        ```bash
+        python3 src/assembler/binary_to_ascii.py output.bin
+        ```
+        This will print the ASCII representation of the binary to the console.
+
 4. **Run on CPU**
 
     Pass output.bin to the CPU simulator:
     ```
-    java src.cpu.MyCPU output.bin
+    java src.cpu.MyCPU output.txt #(the cpu is yet to understand raw binary, so we use the ascii binary stored in output.txt for now)
     ```
     The CPU will:
     - Load the program into instruction memory.
@@ -124,20 +172,30 @@ Register 3: 30
 Program Counter: 84
 End of Execution.
 ```
-Such output shows up if you run the CPU in debug mode i.e. with `-debug` flag:
+Such output shows up if you run the CPU in debug mode i.e. with `--debug` flag:
 ```bash
 java src.cpu.MyCPU output.bin --debug
 ```
 
 ---
+
+## Verification
+The python script `src/assembler/binary_to_ascii.py` can be used to verify the binary output by converting it to ASCII `0` and `1` bits.
+Run it as follows:
+```bash
+python3 src/assembler/binary_to_ascii.py output.bin
+```
+This will print the ASCII representation of the binary to the console, which can be compared with the expected output.
+
+_This step is optional and mainly for debugging or cross-checking the assembler’s output._
+
 ## Current Limitations
-- `.bin` file is not true binary — it stores ASCII '0'/'1' characters (1 byte each).
+- While assember can now generate raw binary, the same implementation is yet to be implemented for the CPU. It currently reads ASCII `0` and `1` bits from a text file.
 - No labels or jumps — programs execute sequentially.
 - No branching or conditional execution.
 - Input/Output is basic (manual IN and OUT instructions).
 ---
 ## Future Improvements
-- Pack bits into actual binary format to reduce file size.
 - Add labels and a symbol resolution system.
 - Implement branching/jump instructions.
 - Create a REPL for live assembly and execution.
