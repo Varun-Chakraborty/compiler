@@ -1,4 +1,9 @@
-# Compiler
+# Compiler - Porting to Rust
+
+**Note:**
+1. The original Java version of this project is available in the [java branch](https://github.com/Varun-Chakraborty/compiler/tree/java).
+2. You’ll need Rust installed to run the Rust-based tools.
+3. The assembler is still being ported to Rust — for now, please use the Java version included in this branch as a fallback.
 
 ## Overview
 This project is a **from-scratch CPU simulator** paired with a simple **assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
@@ -102,9 +107,9 @@ This project is being built to learn **system software** and understand **how CP
     - This means: add the value at memory location `0` with value at register `R1` and store the result in register `R0`.
 
     I have already prepared the example assembly code and is present in this repository as `index.asm`.
-2. **Compile the machines**
+2. **Compile the tools**
     ```bash
-    javac src/assembler/*.java src/cpu/*.java
+    javac src/assembler/*.java
     ```
 3. **Assemble**
 
@@ -130,7 +135,7 @@ This project is being built to learn **system software** and understand **how CP
 
     Pass output.bin to the CPU simulator:
     ```
-    java src.cpu.MyCPU output.bin
+    cargo run -p cpu output.bin
     ```
     The CPU will:
     - Load the program into instruction memory.
@@ -178,7 +183,7 @@ End of Execution.
 ```
 Such output shows up if you run the CPU in debug mode i.e. with `--debug` flag:
 ```bash
-java src.cpu.MyCPU output.bin --debug
+cargo run -p cpu output.bin --debug
 ```
 
 ---
