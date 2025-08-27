@@ -1,4 +1,4 @@
-use std::{io::{stdin, Read}};
+use std::io::{stdin, stdout, Read, Write};
 use crate::register::Register;
 use crate::memory::Memory;
 use crate::instruction::Instruction;
@@ -28,16 +28,16 @@ impl MyCPU {
         self.register.set(register, self.data_memory.get(memory));
     }
 
-    pub fn movem(&mut self, memory: u32, register: u32) { // move from register
+    pub fn movem(&mut self, register: u32, memory: u32) { // move from register
         self.data_memory.set(memory, self.register.get(register));
     }
 
-    pub fn add(&mut self, register1: u32, register2: u32) {
-        self.register.set(register1, self.register.get(register1) + self.register.get(register2));
+    pub fn add(&mut self, dest: u32, source: u32, memory: u32) {
+        self.register.set(dest, self.register.get(source) + self.data_memory.get(memory));
     }
 
-    pub fn sub(&mut self, register1: u32, register2: u32) {
-        self.register.set(register1, self.register.get(register1) - self.register.get(register2));
+    pub fn sub(&mut self, dest: u32, source: u32, memory: u32) {
+        self.register.set(dest, self.register.get(source) - self.data_memory.get(memory));
     }
 
     pub fn halt(&mut self) {
@@ -46,7 +46,8 @@ impl MyCPU {
 
     pub fn input(&mut self, register: u32) {
         let mut input = String::new();
-        println!("Enter value for register {register}: ");
+        print!("Enter value for register {register}: ");
+        stdout().flush().expect("Failed to flush stdout");
         stdin().read_line(&mut input).expect("Failed to read line");
         self.register.set(register, input.trim().parse().unwrap());
     }
@@ -58,11 +59,15 @@ impl MyCPU {
     pub fn opcodes(&mut self, instruction: Instruction) {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
+        if self.debug {
+            println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", self.program_counter, opcode, operands);
+        }
+        self.program_counter = instruction.get_program_counter();
         match opcode {
             0 => self.mover(operands[0], operands[1]),
             1 => self.movem(operands[0], operands[1]),
-            2 => self.add(operands[0], operands[1]),
-            3 => self.sub(operands[0], operands[1]),
+            2 => self.add(operands[0], operands[1], operands[2]),
+            3 => self.sub(operands[0], operands[1], operands[2]),
             4 => self.halt(),
             5 => self.input(operands[0]),
             6 => self.output(operands[0]),
@@ -73,8 +78,6 @@ impl MyCPU {
     pub fn load_binary(&mut self, filepath: &str) {
         use std::fs::File;
         println!("Loading binary file: {}", filepath);
-        // check which directory we are in
-        println!("Current directory: {}", std::env::current_dir().unwrap().display());
         let mut file = File::open(filepath).expect("Failed to open file");
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer).expect("Failed to read file");
@@ -91,17 +94,6 @@ impl MyCPU {
         }
 
         self.program_counter = 0;
-
-        if self.debug {
-            println!("Program Memory: ");
-            for i in 0..self.program_memory.size() {
-                print!("{} ", self.program_memory.get(i));
-                if i % 8 == 7 {
-                    println!();
-                }
-            }
-            println!();
-        }
         println!("Binary file loaded successfully. Starting execution...");
 
     }
@@ -109,12 +101,6 @@ impl MyCPU {
     pub fn run(&mut self) {
         while  self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
             let instruction = Instruction::new(&self.program_memory, &mut self.program_counter);
-            let opcode = instruction.get_opcode();
-            let operands = instruction.get_operands();
-            if self.debug {
-                println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", self.program_counter, opcode, operands);
-            }
-            self.program_counter = instruction.get_program_counter();
             self.opcodes(instruction);
         }
     }
