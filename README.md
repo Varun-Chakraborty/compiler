@@ -111,16 +111,16 @@ This project is being built to learn **system software** and understand **how CP
 
     Run the assembler to convert your `.asm` file into a `.bin` file:
     ```bash
-    java src.assembler.MyAssembler index.asm
+    cargo run -p assembler index.asm
     ```
     This produces raw binary in output.bin.
     
     Note:
     1. The assembler also generates a `.txt` file with ASCII `0` and `1` bits if run in debug mode.
         ```bash
-        java src.assembler.MyAssembler index.asm --debug --pretty
+        cargo run -p assembler index.asm --debug --pretty
         ```
-        This produces a human-readable binary alongside the raw binary in output.txt.
+        This produces a human-readable binary alongside the raw binary in debug.txt.
     2. We have also added a script in the root of the repository to convert the raw binary to ASCII `0` and `1` bits:
         ```bash
         python3 convertBinToASCIIBin.py output.bin
