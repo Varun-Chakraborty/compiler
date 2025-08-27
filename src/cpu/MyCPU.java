@@ -18,13 +18,13 @@ class Register {
         regs = new byte[count];
     }
 
-    public void set(int register, int value) {
+    public void set(int register, byte value) {
         if (register < 0 || register > count - 1)
             throw new IllegalArgumentException("Invalid register");
         regs[register] = (byte) value;
     }
 
-    public int get(int register) {
+    public byte get(int register) {
         if (register < 0 || register > count - 1)
             throw new IllegalArgumentException("Invalid register");
         return regs[register];
@@ -32,24 +32,24 @@ class Register {
 }
 
 class Memory {
-    private int[] memory;
+    private byte[] memory;
 
     public Memory(int size) {
-        memory = new int[size];
+        memory = new byte[size];
     }
 
     public int size() {
         return memory.length;
     }
 
-    public void set(int address, int value) {
+    public void set(int address, byte value) {
         if (address < 0 || address >= memory.length) {
             throw new IndexOutOfBoundsException("Memory address out of bounds");
         }
         memory[address] = value;
     }
 
-    public int get(int address) {
+    public byte get(int address) {
         if (address < 0 || address >= memory.length) {
             throw new IndexOutOfBoundsException("Memory address out of bounds");
         }
@@ -112,7 +112,7 @@ class Instruction {
 
 public class MyCPU {
     private int programCounter;
-    private int EOF = 0; // End of File
+    private int EOF; // End of File
     private Memory programMemory;
     private Memory dataMemory;
     private Register register;
@@ -120,6 +120,7 @@ public class MyCPU {
 
     public MyCPU() {
         programCounter = 0;
+        EOF = 0;
         register = new Register(4); // Initialize with 4 registers
         programMemory = new Memory(256); // Initialize memory with 256 addresses
         dataMemory = new Memory(256); // Initialize memory with 256 addresses
@@ -134,11 +135,11 @@ public class MyCPU {
     }
 
     private void add(int register, int sourceReg, int memAdd) {
-        this.register.set(register, this.register.get(sourceReg) + dataMemory.get(memAdd));
+        this.register.set(register, (byte) (this.register.get(sourceReg) + dataMemory.get(memAdd)));
     }
 
     private void sub(int register, int sourceReg, int memAdd) {
-        this.register.set(register, this.register.get(sourceReg) - dataMemory.get(memAdd));
+        this.register.set(register, (byte) (this.register.get(sourceReg) - dataMemory.get(memAdd)));
     }
 
     private void in(int register) {
@@ -146,7 +147,7 @@ public class MyCPU {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.print("Enter value for register " + register + ": ");
             String input = reader.readLine();
-            int value = Integer.parseInt(input);
+            byte value = Byte.parseByte(input);
             this.register.set(register, value);
         } catch (IOException | NumberFormatException e) {
             System.out.println("Error reading input: " + e.getMessage());
@@ -188,7 +189,7 @@ public class MyCPU {
             while (inputStream.available() > 1) {
                 byte byteRead = (byte) inputStream.read();
                 for(int i = 0; i < 8; i++) {
-                    int bit = (byteRead >> (7 - i)) & 1;
+                    byte bit = (byte) ((byteRead >> (7 - i)) & 1);
                     programMemory.set(programCounter++, bit);
                     if (programCounter >= programMemory.size()) {
                         System.out.println("Program memory overflow. Stopping load.");

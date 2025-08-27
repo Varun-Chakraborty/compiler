@@ -1,4 +1,9 @@
-# Compiler
+# Compiler - Java Version
+
+**Note:**
+1. The rust version of this project is available in the [main branch](https://github.com/Varun-Chakraborty/compiler/tree/main).
+2. We strongly recommend using the rust version as it is more efficient and will soon have more features.
+3. You’ll need Java installed to run these Java-based tools.
 
 ## Overview
 This project is a **from-scratch CPU simulator** paired with a simple **assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
