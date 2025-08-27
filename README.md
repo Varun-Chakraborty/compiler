@@ -1,4 +1,4 @@
-# Compiler - Java Version
+# Compiler - Java Version [ARCHIVED]
 
 **Note:**
 1. The rust version of this project is available in the [main branch](https://github.com/Varun-Chakraborty/compiler/tree/main).
@@ -109,20 +109,20 @@ This project is being built to learn **system software** and understand **how CP
     I have already prepared the example assembly code and is present in this repository as `index.asm`.
 2. **Compile the machines**
     ```bash
-    javac src/assembler/*.java src/cpu/*.java
+    javac assembler/*.java src/cpu/*.java
     ```
 3. **Assemble**
 
     Run the assembler to convert your `.asm` file into a `.bin` file:
     ```bash
-    java src.assembler.MyAssembler index.asm
+    java assembler.MyAssembler index.asm
     ```
     This produces raw binary in output.bin.
     
     Note:
     1. The assembler also generates a `.txt` file with ASCII `0` and `1` bits if run in debug mode.
         ```bash
-        java src.assembler.MyAssembler index.asm --debug --pretty
+        java assembler.MyAssembler index.asm --debug --pretty
         ```
         This produces a human-readable binary alongside the raw binary in output.txt.
     2. We have also added a script in the root of the repository to convert the raw binary to ASCII `0` and `1` bits:
@@ -135,7 +135,7 @@ This project is being built to learn **system software** and understand **how CP
 
     Pass output.bin to the CPU simulator:
     ```
-    java src.cpu.MyCPU output.bin
+    java cpu.MyCPU output.bin
     ```
     The CPU will:
     - Load the program into instruction memory.
@@ -183,7 +183,7 @@ End of Execution.
 ```
 Such output shows up if you run the CPU in debug mode i.e. with `--debug` flag:
 ```bash
-java src.cpu.MyCPU output.bin --debug
+java cpu.MyCPU output.bin --debug
 ```
 
 ---
