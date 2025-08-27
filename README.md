@@ -1,8 +1,11 @@
 # Compiler - Rust Version
 
-**Note:**
-1. The original Java version of this project is available in the [java branch](https://github.com/Varun-Chakraborty/compiler/tree/java).
-2. You’ll need Rust installed to run these Rust-based tools.
+### Archived Java Version
+This project was originally started as a Java implementation to learn the basics of CPU simulation and assembly.  
+That version has now been **archived** and preserved in the [`java-archive`](https://github.com/Varun-Chakraborty/compiler/tree/java-archive) tag.  
+The active development is now focused on the Rust port, due to its closer alignment with systems programming concepts.
+
+**Note:** You’ll need Rust installed to run these Rust-based tools.
 
 ## Overview
 This project is a **from-scratch CPU simulator** paired with a simple **assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
