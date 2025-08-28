@@ -18,37 +18,13 @@ This project is being built to learn **system software** and understand **how CP
 ---
 
 ## Features
-
-### CPU
-- Executes a custom instruction set.
-- Supports:
-    - `MOVER` — Move from memory to register.
-    - `MOVEM` — Move from register to memory.
-    - `ADD` — Add a memory value to a register.
-    - `SUB` — Subtract a memory value from a register.
-    - `HALT` — Stop execution.
-    - `IN` — Load a value into a register.
-    - `OUT` — Output a value from a register.
-- Keeps track of:
-    - **Registers** (R0, R1, R2, R3)
-    - **Data memory**
-    - **Program memory**
-    - **Program counter (PC)**
-
-- Supports two modes:
-    - **Normal mode**: Executes instructions sequentially.
-    - **Debug mode**: Prints detailed execution steps.
-
-### Assembler
-- Converts `.asm` source files into `.bin` file of raw binary always and `.txt` files of ASCII `0` and `1` bits in `--debug` mode and `--pretty` mode.
-- Instruction format:  
-    `<4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>]]`
-- Symbol table mapping for opcodes:
+# ISA
+Symbol table mapping for opcodes:
     <table>
         <tr>
             <th>Opcode</th>
             <th>Mnemonic</th>
-            <th>Arguments</th>
+            <th>Expected Count of Arguments</th>
         </tr>
         <tr>
             <td>0000</td>
@@ -85,12 +61,51 @@ This project is being built to learn **system software** and understand **how CP
             <td>OUT</td>
             <td>1 (R)</td>
         </tr>
+        <tr>
+            <td>0111</td>
+            <td>JMP</td>
+            <td>1 (M)</td>
+        </tr>
+        <tr>
+            <td>1000</td>
+            <td>JZ</td>
+            <td>1 (M)</td>
+        </tr>
+        <tr>
+            <td>1001</td>
+            <td>JNZ</td>
+            <td>1 (M)</td>
+        </tr>
+        <tr>
+            <td>1010</td>
+            <td>MULT</td>
+            <td>2 (R, M)</td>
+        </tr>
     </table>
+
+### CPU
+- Executes a custom instruction set.
+- Supports various opcodes as defined in [the ISA](#isa).
+- Keeps track of:
+    - **Registers** (R0, R1, R2, R3)
+    - **Data memory**
+    - **Program memory**
+    - **Program counter (PC)**
+
+- Supports two modes:
+    - **Normal mode**: Executes instructions sequentially.
+    - **Debug mode**: Prints detailed execution steps.
+
+### Assembler
+- Converts `.asm` source files into `.bin` file of raw binary always and `.txt` files of ASCII `0` and `1` bits in `--debug` mode and `--pretty` mode.
+- Instruction format:  
+    `<4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>] [<8-bit program memory address (in case of labels)>]]`
 
 - Operand format:
     - **Opcode**: 4 bits (0-15)
     - **Register**: 2 bits (R0 = 00, R1 = 01, R2 = 10, R3 = 11)
-    - **Memory Address**: 4 bits (0-15)
+    - **Data Memory Address**: 4 bits (0-15)
+    - **Program Memory Address**: 8 bits (0-255)
 
 - Supports three modes:
     - **Normal mode**: Converts assembly to binary without debug info.
@@ -143,41 +158,55 @@ This project is being built to learn **system software** and understand **how CP
 ### Example
 **program.asm**
 ```
-IN R2           ; input to register 2
-MOVEM R2, 0     ; move to memory address 0 from register 2
-IN R2           ; input to register 2
-MOVEM R2, 1     ; move to memory address 1 from register 2
-MOVER R1, 0     ; move to register 1 from memory address 0
-ADD R0, R1, 1   ; add value stored in register 1 to value stored in memory address 1 and store in register 0
-MOVEM R0, 0     ; move to memory address 0 from register 0
-MOVER R3, 0     ; move to register 3 from memory address 0
-OUT R3          ; output the value stored in register 3
-HALT            ; end the program
+IN R1               ; Input the number
+IN R0               ; Input default 1, constants are yet to be implemented
+MOVEM R0 1          ; Move default 1 to memory location 1
+LOOP: MOVEM R1 0    ; Support of labels; Move input to memory location 0
+MULT R0 R0 0        ; Multiply value at R0 (default 1 for the first iteration) with input
+SUB R1 R1 1         ; Subtract 1 from input
+JNZ LOOP            ; Jump to loop if input is not 0
+OUT R0              ; Output the result
 ```
+As you might have guessed, the above program calculates the factorial of the input number.
+
 **Output**
 ```
-Binary file loaded successfully. Starting execution...
 Debug mode enabled.
-Executing instruction at PC 0: Opcode = 5, Operands = [2]
-Enter value for register 2: 15
-Executing instruction at PC 6: Opcode = 1, Operands = [2, 0]
-Executing instruction at PC 16: Opcode = 5, Operands = [2]
-Enter value for register 2: 15
-Executing instruction at PC 22: Opcode = 1, Operands = [2, 1]
-Executing instruction at PC 32: Opcode = 0, Operands = [1, 0]
-Executing instruction at PC 42: Opcode = 2, Operands = [0, 1, 1]
-Executing instruction at PC 54: Opcode = 1, Operands = [0, 0]
-Executing instruction at PC 64: Opcode = 0, Operands = [3, 0]
-Executing instruction at PC 74: Opcode = 6, Operands = [3]
-Output from register 3: 30
-Executing instruction at PC 80: Opcode = 4, Operands = []
+Loading binary file: output.bin
+Binary file loaded successfully. Starting execution...
+Executing instruction at PC 0: Opcode = 5, Operands = [1]
+Enter value for register 1: 5
+Executing instruction at PC 6: Opcode = 5, Operands = [0]
+Enter value for register 0: 1
+Executing instruction at PC 12: Opcode = 1, Operands = [0, 1]
+Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
+Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
+Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
+Executing instruction at PC 56: Opcode = 9, Operands = [22]
+Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
+Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
+Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
+Executing instruction at PC 56: Opcode = 9, Operands = [22]
+Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
+Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
+Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
+Executing instruction at PC 56: Opcode = 9, Operands = [22]
+Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
+Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
+Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
+Executing instruction at PC 56: Opcode = 9, Operands = [22]
+Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
+Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
+Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
+Executing instruction at PC 56: Opcode = 9, Operands = [22]
+Executing instruction at PC 68: Opcode = 6, Operands = [0]
+Output from register 0: 120
 Execution completed.
-Final Register State: 
-Register 0: 30
-Register 1: 15
-Register 2: 15
-Register 3: 30
-Program Counter: 84
+Register 0: 120
+Register 1: 0
+Register 2: 0
+Register 3: 0
+Program Counter: 74
 End of Execution.
 ```
 Such output shows up if you run the CPU in debug mode i.e. with `--debug` flag:
@@ -198,13 +227,11 @@ This will print the ASCII representation of the binary to the console, which can
 _This step is optional and mainly for debugging or cross-checking the assembler’s output._
 
 ## Current Limitations
-- No labels or jumps — programs execute sequentially.
-- No branching or conditional execution.
 - Input/Output is basic (manual IN and OUT instructions).
+- No support for constants.
+
 ---
 ## Future Improvements
-- Add labels and a symbol resolution system.
-- Implement branching/jump instructions.
 - Create a REPL for live assembly and execution.
 - Support for more registers and larger memory space.
 ---

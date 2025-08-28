@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::io::{stdin, stdout, Read, Write};
 use crate::register::Register;
 use crate::memory::Memory;
-use crate::instruction::Instruction;
+use crate::instruction::{Instruction, OperationInfo};
 
 pub struct MyCPU {
     program_counter: u32,
@@ -9,14 +10,31 @@ pub struct MyCPU {
     program_memory: Memory,
     data_memory: Memory,
     register: Register,
-    debug: bool
+    zero_flag: bool,
+    debug: bool,
+    opttab: HashMap<u32, OperationInfo>
 }
 
 impl MyCPU {
     pub fn new(debug: bool) -> Self {
+        let opttab: HashMap<u32, OperationInfo> = HashMap::from([
+            (0, OperationInfo { expected_arguments: 2, function: MyCPU::mover }),
+            (1, OperationInfo { expected_arguments: 2, function: MyCPU::movem }),
+            (2, OperationInfo { expected_arguments: 3, function: MyCPU::add }),
+            (3, OperationInfo { expected_arguments: 3, function: MyCPU::sub }),
+            (4, OperationInfo { expected_arguments: 0, function: MyCPU::halt }),
+            (5, OperationInfo { expected_arguments: 1, function: MyCPU::input }),
+            (6, OperationInfo { expected_arguments: 1, function: MyCPU::output }),
+            (7, OperationInfo { expected_arguments: 1, function: MyCPU::jmp }),
+            (8, OperationInfo { expected_arguments: 1, function: MyCPU::jz }),
+            (9, OperationInfo { expected_arguments: 1, function: MyCPU::jnz }),
+            (10, OperationInfo { expected_arguments: 3, function: MyCPU::mult }),
+        ]);
         return Self {
             program_counter: 0,
             eof: 0,
+            opttab,
+            zero_flag: false,
             program_memory: Memory::new(256),
             data_memory: Memory::new(256),
             register: Register::new(4),
@@ -24,36 +42,87 @@ impl MyCPU {
         };
     }
 
-    pub fn mover(&mut self, register: u32, memory: u32) { // move to register
+    pub fn mover(&mut self, operands: &[u32]) { // move to register
+        let register = operands[0];
+        let memory = operands[1];
         self.register.set(register, self.data_memory.get(memory));
     }
 
-    pub fn movem(&mut self, register: u32, memory: u32) { // move from register
-        self.data_memory.set(memory, self.register.get(register));
+    pub fn movem(&mut self, operands: &[u32]) { // move from register
+        let register = operands[0];
+        let memory = operands[1];
+        let value = self.register.get(register);
+        self.zero_flag = value == 0;
+        self.data_memory.set(memory, value);
     }
 
-    pub fn add(&mut self, dest: u32, source: u32, memory: u32) {
-        self.register.set(dest, self.register.get(source) + self.data_memory.get(memory));
+    pub fn add(&mut self, operands: &[u32]) {
+        let dest = operands[0];
+        let source = operands[1];
+        let memory = operands[2];
+        let sum = self.register.get(source) + self.data_memory.get(memory);
+        self.zero_flag = sum == 0;
+        self.register.set(dest, sum);
     }
 
-    pub fn sub(&mut self, dest: u32, source: u32, memory: u32) {
-        self.register.set(dest, self.register.get(source) - self.data_memory.get(memory));
+    pub fn sub(&mut self, operands: &[u32]) {
+        let dest = operands[0];
+        let source = operands[1];
+        let memory = operands[2];
+        let diff = self.register.get(source) - self.data_memory.get(memory);
+        self.zero_flag = diff == 0;
+        self.register.set(dest, diff);
     }
 
-    pub fn halt(&mut self) {
+    pub fn halt(&mut self, _: &[u32]) {
         self.program_counter = self.eof;
     }
 
-    pub fn input(&mut self, register: u32) {
+    pub fn input(&mut self, operands: &[u32]) {
+        let register = operands[0];
         let mut input = String::new();
         print!("Enter value for register {register}: ");
         stdout().flush().expect("Failed to flush stdout");
         stdin().read_line(&mut input).expect("Failed to read line");
-        self.register.set(register, input.trim().parse().unwrap());
+        let input = input.trim().parse().unwrap();
+        self.zero_flag = input == 0;
+        self.register.set(register, input);
     }
 
-    pub fn output(&mut self, register: u32) {
-        println!("Output from register {register}: {}", self.register.get(register));
+    pub fn output(&mut self, operands: &[u32]) {
+        let register = operands[0];
+        let value = self.register.get(register);
+        self.zero_flag = value == 0;
+        println!("Output from register {register}: {value}");
+        stdout().flush().expect("Failed to flush stdout");
+    }
+
+    pub fn jmp(&mut self, operands: &[u32]) {
+        let address = operands[0];
+        self.program_counter = address;
+    }
+
+    pub fn jz(&mut self, operands: &[u32]) {
+        let address = operands[0];
+        if self.zero_flag {
+            self.program_counter = address;
+        }
+    }
+
+    pub fn jnz(&mut self, operands: &[u32]) {
+        let address = operands[0];
+        if !self.zero_flag {
+            self.program_counter = address;
+        }
+    }
+
+    pub fn mult(&mut self, operands: &[u32]) {
+        let dest = operands[0];
+        let source = operands[1];
+        let memory = operands[2];
+        let product = self.register.get(source) * self.data_memory.get(memory);
+        self.zero_flag = product == 0;
+        self.register.set(dest, product);
     }
 
     pub fn opcodes(&mut self, instruction: Instruction) {
@@ -63,16 +132,7 @@ impl MyCPU {
             println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", self.program_counter, opcode, operands);
         }
         self.program_counter = instruction.get_program_counter();
-        match opcode {
-            0 => self.mover(operands[0], operands[1]),
-            1 => self.movem(operands[0], operands[1]),
-            2 => self.add(operands[0], operands[1], operands[2]),
-            3 => self.sub(operands[0], operands[1], operands[2]),
-            4 => self.halt(),
-            5 => self.input(operands[0]),
-            6 => self.output(operands[0]),
-            _ => panic!("Invalid opcode")
-        }
+        (self.opttab.get(&opcode).unwrap().function)(self, operands);
     }
 
     pub fn load_binary(&mut self, filepath: &str) {
@@ -100,7 +160,7 @@ impl MyCPU {
 
     pub fn run(&mut self) {
         while  self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
-            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter);
+            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter, &self.opttab);
             self.opcodes(instruction);
         }
     }

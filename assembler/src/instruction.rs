@@ -2,45 +2,91 @@ use crate::writer::Writer;
 use core::panic;
 use std::collections::HashMap;
 
+struct OpInfo {
+    opcode: u32,
+    operand_count: u32
+}
+
 pub struct Instruction {
     opcode: u32,
     operands: Vec<String>,
     operand_count: u32,
     current_operand: u32,
-    opttab: HashMap<&'static str, u32>,
+    opttab: HashMap<String, OpInfo>,
+    symtab: HashMap<String, u32>,
+    is_empty: bool,
+    is_there_label: bool,
+    label: String,
+    location_counter: u32,
     writer: Writer
 }
 
 impl Instruction {
     pub fn new(debug: bool, pretty: bool) -> Self {
-        let opttab = HashMap::from([
-            ("MOVER", 0),
-            ("MOVEM", 1),
-            ("ADD", 2),
-            ("SUB", 3),
-            ("HALT", 4),
-            ("IN", 5),
-            ("OUT", 6),
-        ]);
+        let opttab = [
+            ("MOVER", OpInfo {opcode: 0, operand_count: 2}),
+            ("MOVEM", OpInfo {opcode: 1, operand_count: 2}),
+            ("ADD", OpInfo {opcode: 2, operand_count: 3}),
+            ("SUB", OpInfo {opcode: 3, operand_count: 3}),
+            ("HALT", OpInfo {opcode: 4, operand_count: 0}),
+            ("IN", OpInfo {opcode: 5, operand_count: 1}),
+            ("OUT", OpInfo {opcode: 6, operand_count: 1}),
+            ("JMP", OpInfo {opcode: 7, operand_count: 1}),
+            ("JZ", OpInfo {opcode: 8, operand_count: 1}),
+            ("JNZ", OpInfo {opcode: 9, operand_count: 1}),
+            ("MULT", OpInfo {opcode: 10, operand_count: 3}),
+        ].into_iter().map(|(k, v)| (k.to_string(), v)).collect();
         return Self {
             opcode: 0,
             operands: Vec::new(),
             operand_count: 0,
             current_operand: 0,
+            location_counter: 0,
+            is_empty: true,
+            is_there_label: false,
+            label: String::new(),
             opttab,
+            symtab: HashMap::new(),
             writer: Writer::new(debug, pretty)
         };
     }
 
-    pub fn set_opcode(&mut self, opcode: &str) {
-        if !self.opttab.contains_key(opcode) {
-            panic!("Invalid opcode: '{}'", opcode);
+    pub fn add_token(&mut self, token: String) {
+        if self.is_empty {
+            // if the instruction is empty, the token must be a label or an opcode
+            if token.ends_with(":") {
+                if !self.is_there_label {
+                    self.is_there_label = true;
+                    self.add_label(token[0..token.len()-1].to_string());
+                    return;   
+                }
+                panic!("A statement can only have one label");
+            }
+            self.set_opcode(token);
+        } else {
+            self.add_operand(token);
         }
-        self.opcode = *self.opttab.get(&opcode).unwrap();
-        self.operand_count = match self.opcode { 2 | 3 => 3, 0 | 1 => 2, 5 | 6 => 1, _ => 0 };
     }
 
-    pub fn add_operand(&mut self, operand: &str) {
+    fn add_label(&mut self, label: String) {
+        self.symtab.insert(label.clone(), self.location_counter);
+        self.label = label;
+    }
+
+    fn set_opcode(&mut self, opcode: String) {
+        if opcode.is_empty() {
+            return;
+        }
+        if let Some(operation) = self.opttab.get(&opcode) {
+            self.is_empty = false;
+            self.opcode = operation.opcode;
+            self.operand_count = operation.operand_count;
+        } else {
+            panic!("Invalid opcode: '{}'", opcode);
+        }
+    }
+
+    fn add_operand(&mut self, operand: String) {
         if operand.is_empty() {
             return;
         }
@@ -51,16 +97,28 @@ impl Instruction {
         self.current_operand += 1;
     }
 
+    fn increment_location_counter(&mut self, by: u32) {
+        self.location_counter += by;
+    }
+
     pub fn is_empty(&self) -> bool {
-        return self.opcode == 0 && self.operand_count == 0;
+        return self.is_empty;
     }
 
     pub fn is_incomplete(&self) -> bool {
         return self.operand_count != 0 && self.current_operand < self.operand_count;
     }
 
+    pub fn print_symtab(&self) {
+        println!("Symbol Table:");
+        println!("{:?}", self.symtab);
+    }
+
     pub fn done(&mut self) {
         if self.is_empty() {
+            if self.is_there_label {
+                self.symtab.remove(self.label.as_str());
+            }
             return;
         }
         if self.is_incomplete() {
@@ -68,22 +126,31 @@ impl Instruction {
         }
         println!("Instruction: Opcode = {}, Operands = {:?}", self.opcode, self.operands);
         self.writer.write(self.opcode, 4);
+        self.increment_location_counter(4);
+        let mut bits_written = 0;
         for operand in &self.operands {
             if operand.is_empty() {
                 continue;
             }
             if operand.chars().all(char::is_numeric) {
                 self.writer.write(operand.parse::<u32>().unwrap(), 4);
+                bits_written += 4;
             } else if operand.chars().nth(0).unwrap() == 'R' && operand[1..].chars().all(char::is_numeric) {
                 self.writer.write(operand[1..].parse::<u32>().unwrap(), 2);
+                bits_written += 2;
+            } else if self.symtab.contains_key(operand.as_str()) && matches!(self.opcode, 7 | 8 | 9) {
+                self.writer.write(*self.symtab.get(operand.as_str()).unwrap(), 8);
+                bits_written += 8;
             } else {
                 panic!("Invalid operand: {}", operand);
             }
         }
+        self.increment_location_counter(bits_written);
         self.writer.new_line();
         self.opcode = 0;
         self.operand_count = 0;
         self.current_operand = 0;
+        self.is_empty = true;
         self.operands.clear();
     }
 

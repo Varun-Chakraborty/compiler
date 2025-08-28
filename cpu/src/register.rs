@@ -23,7 +23,7 @@ impl Register {
 
     pub fn get(&self, register: u32) -> u8 {
         if register > self.count - 1 {
-            panic!("Invalid register");
+            panic!("Invalid register {register}");
         }
         return self.regs[register as usize];
     }

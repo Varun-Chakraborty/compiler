@@ -30,19 +30,11 @@ impl MyAssembler {
                     if is_comment {
                         continue;
                     }
-                    if self.instructions.is_empty() {
-                        self.instructions.set_opcode(&token);
-                    } else {
-                        self.instructions.add_operand(&token);
-                    }
+                    self.instructions.add_token(token);
                 },
                 ';' | '\n' => {
                     if !is_comment {
-                        if self.instructions.is_empty() {
-                            self.instructions.set_opcode(&token); 
-                        } else {
-                            self.instructions.add_operand(&token);
-                        }
+                        self.instructions.add_token(token);
                         self.instructions.done();
                     }
                     if c == ';' {
@@ -59,8 +51,10 @@ impl MyAssembler {
                     continue;
                 }
             }
-            token.clear();
+            token = String::new();
         }
         self.instructions.close();
+        self.instructions.print_symtab();
+        println!("Assembly completed.");
     }
 }

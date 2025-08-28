@@ -7,7 +7,7 @@ use assembler::MyAssembler;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        println!("Please provide the path to the assembly file.");
+        println!("Usage: assembler <filename.asm> [--debug] [--pretty]");
         return;
     }
     let debug = args.len() >= 3 && args[2] == "--debug";
