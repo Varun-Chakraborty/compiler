@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use isa::{OptTab};
 use std::io::{stdin, stdout, Read, Write};
 use crate::register::Register;
 use crate::memory::Memory;
-use crate::instruction::{Instruction, OperationInfo};
+use crate::instruction::{Instruction};
 
 pub struct MyCPU {
     program_counter: u32,
@@ -12,28 +12,15 @@ pub struct MyCPU {
     register: Register,
     zero_flag: bool,
     debug: bool,
-    opttab: HashMap<u32, OperationInfo>
+    opttab: OptTab
 }
 
 impl MyCPU {
     pub fn new(debug: bool) -> Self {
-        let opttab: HashMap<u32, OperationInfo> = HashMap::from([
-            (0, OperationInfo { expected_arguments: 2, function: MyCPU::mover }),
-            (1, OperationInfo { expected_arguments: 2, function: MyCPU::movem }),
-            (2, OperationInfo { expected_arguments: 3, function: MyCPU::add }),
-            (3, OperationInfo { expected_arguments: 3, function: MyCPU::sub }),
-            (4, OperationInfo { expected_arguments: 0, function: MyCPU::halt }),
-            (5, OperationInfo { expected_arguments: 1, function: MyCPU::input }),
-            (6, OperationInfo { expected_arguments: 1, function: MyCPU::output }),
-            (7, OperationInfo { expected_arguments: 1, function: MyCPU::jmp }),
-            (8, OperationInfo { expected_arguments: 1, function: MyCPU::jz }),
-            (9, OperationInfo { expected_arguments: 1, function: MyCPU::jnz }),
-            (10, OperationInfo { expected_arguments: 3, function: MyCPU::mult }),
-        ]);
         return Self {
             program_counter: 0,
             eof: 0,
-            opttab,
+            opttab: OptTab::clone(),
             zero_flag: false,
             program_memory: Memory::new(256),
             data_memory: Memory::new(256),
@@ -132,7 +119,21 @@ impl MyCPU {
             println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", self.program_counter, opcode, operands);
         }
         self.program_counter = instruction.get_program_counter();
-        (self.opttab.get(&opcode).unwrap().function)(self, operands);
+        let operation_name = &self.opttab.get_by_opcode(&opcode).operation_name;
+        match operation_name.to_lowercase().as_str() {
+            "mover" => self.mover(operands),
+            "movem" => self.movem(operands),
+            "add" => self.add(operands),
+            "sub" => self.sub(operands),
+            "halt" => self.halt(operands),
+            "in" => self.input(operands),
+            "out" => self.output(operands),
+            "jmp" => self.jmp(operands),
+            "jz" => self.jz(operands),
+            "jnz" => self.jnz(operands),
+            "mult" => self.mult(operands),
+            _ => println!("Invalid opcode: {}", opcode)
+        }
     }
 
     pub fn load_binary(&mut self, filepath: &str) {
@@ -160,7 +161,7 @@ impl MyCPU {
 
     pub fn run(&mut self) {
         while  self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
-            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter, &self.opttab);
+            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter);
             self.opcodes(instruction);
         }
     }

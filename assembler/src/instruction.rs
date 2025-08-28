@@ -1,18 +1,14 @@
 use crate::writer::Writer;
 use core::panic;
 use std::collections::HashMap;
-
-struct OpInfo {
-    opcode: u32,
-    operand_count: u32
-}
+use isa::{OptTab};
 
 pub struct Instruction {
     opcode: u32,
     operands: Vec<String>,
     operand_count: u32,
     current_operand: u32,
-    opttab: HashMap<String, OpInfo>,
+    opttab: OptTab,
     symtab: HashMap<String, u32>,
     is_empty: bool,
     is_there_label: bool,
@@ -23,19 +19,6 @@ pub struct Instruction {
 
 impl Instruction {
     pub fn new(debug: bool, pretty: bool) -> Self {
-        let opttab = [
-            ("MOVER", OpInfo {opcode: 0, operand_count: 2}),
-            ("MOVEM", OpInfo {opcode: 1, operand_count: 2}),
-            ("ADD", OpInfo {opcode: 2, operand_count: 3}),
-            ("SUB", OpInfo {opcode: 3, operand_count: 3}),
-            ("HALT", OpInfo {opcode: 4, operand_count: 0}),
-            ("IN", OpInfo {opcode: 5, operand_count: 1}),
-            ("OUT", OpInfo {opcode: 6, operand_count: 1}),
-            ("JMP", OpInfo {opcode: 7, operand_count: 1}),
-            ("JZ", OpInfo {opcode: 8, operand_count: 1}),
-            ("JNZ", OpInfo {opcode: 9, operand_count: 1}),
-            ("MULT", OpInfo {opcode: 10, operand_count: 3}),
-        ].into_iter().map(|(k, v)| (k.to_string(), v)).collect();
         return Self {
             opcode: 0,
             operands: Vec::new(),
@@ -45,7 +28,7 @@ impl Instruction {
             is_empty: true,
             is_there_label: false,
             label: String::new(),
-            opttab,
+            opttab: OptTab::clone(),
             symtab: HashMap::new(),
             writer: Writer::new(debug, pretty)
         };
@@ -57,36 +40,33 @@ impl Instruction {
             if token.ends_with(":") {
                 if !self.is_there_label {
                     self.is_there_label = true;
-                    self.add_label(token[0..token.len()-1].to_string());
+                    self.add_label(&token[0..token.len()-1]);
                     return;   
                 }
                 panic!("A statement can only have one label");
             }
-            self.set_opcode(token);
+            self.set_opcode(&token);
         } else {
-            self.add_operand(token);
+            self.add_operand(&token);
         }
     }
 
-    fn add_label(&mut self, label: String) {
-        self.symtab.insert(label.clone(), self.location_counter);
-        self.label = label;
+    fn add_label(&mut self, label: &str) {
+        self.symtab.insert(label.to_string(), self.location_counter);
+        self.label = label.to_string();
     }
 
-    fn set_opcode(&mut self, opcode: String) {
+    fn set_opcode(&mut self, opcode: &str) {
         if opcode.is_empty() {
             return;
         }
-        if let Some(operation) = self.opttab.get(&opcode) {
-            self.is_empty = false;
-            self.opcode = operation.opcode;
-            self.operand_count = operation.operand_count;
-        } else {
-            panic!("Invalid opcode: '{}'", opcode);
-        }
+        let operation = self.opttab.get_by_operation_name(opcode);
+        self.is_empty = false;
+        self.opcode = operation.opcode;
+        self.operand_count = operation.expected_arguments;
     }
 
-    fn add_operand(&mut self, operand: String) {
+    fn add_operand(&mut self, operand: &str) {
         if operand.is_empty() {
             return;
         }

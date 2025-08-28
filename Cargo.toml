@@ -1,3 +1,3 @@
 [workspace]
-members = ["cpu", "assembler"]
+members = ["cpu", "assembler", "isa"]
 resolver = "3"

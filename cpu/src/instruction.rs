@@ -1,4 +1,6 @@
-use std::{collections::HashMap, vec};
+use std::{vec};
+use isa::OptTab;
+
 use crate::memory::Memory;
 
 pub struct Instruction {
@@ -7,13 +9,9 @@ pub struct Instruction {
     operands: Vec<u32>,
 }
 
-pub struct OperationInfo {
-    pub expected_arguments: u32,
-    pub function: fn(&mut crate::MyCPU, &[u32])
-}
-
 impl Instruction {
-    pub fn new(memory: &Memory, program_counter: &mut u32, opttab: &HashMap<u32, OperationInfo>) -> Self {
+    pub fn new(memory: &Memory, program_counter: &mut u32) -> Self {
+        let opttab = OptTab::clone();
         let mut program_counter = *program_counter;
         let opcode = (0..4).map(|_| {
             let bit = memory.get(program_counter);
@@ -21,11 +19,11 @@ impl Instruction {
             return bit;
         }).fold(0, |acc, x| acc << 1 | x) as u32;
 
-        if !opttab.contains_key(&opcode) {
+        if !opttab.contains_opcode(opcode) {
             panic!("Invalid opcode: {}", opcode);
         }
 
-        let operand_count = opttab.get(&opcode).unwrap().expected_arguments as usize;
+        let operand_count = opttab.get_by_opcode(&opcode).expected_arguments as usize;
 
         let mut operands: Vec<u32> = vec![];
         for i in 0..operand_count {
