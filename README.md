@@ -10,7 +10,7 @@ The active development is now focused on the Rust port, due to its closer alignm
 ## Overview
 This project is a **from-scratch CPU simulator** paired with a simple **assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
 
-The CPU executes basic instructions like data movement, arithmetic, and halting.  
+The CPU executes basic instructions like data movement, arithmetic, conditional jumps, input/output, and halting.  
 The assembler converts human-readable assembly into a `.bin` file, which the CPU can then run.
 
 This project is being built to learn **system software** and understand **how CPUs work** at a low level.
@@ -28,60 +28,74 @@ Symbol table mapping for opcodes:
         </tr>
         <tr>
             <td>0000</td>
-            <td>MOVER</td>
-            <td>2 (R, M)</td>
-        </tr>
-        <tr>
-            <td>0001</td>
-            <td>MOVEM</td>
-            <td>2 (R, M)</td>
-        </tr>
-        <tr>
-            <td>0010</td>
-            <td>ADD</td>
-            <td>3 (R, R, M)</td>
-        </tr>
-        <tr>
-            <td>0011</td>
-            <td>SUB</td>
-            <td>3 (R, R, M)</td>
-        </tr>
-        <tr>
-            <td>0100</td>
             <td>HALT</td>
             <td>0</td>
         </tr>
         <tr>
-            <td>0101</td>
+            <td>0001</td>
+            <td>MOVER</td>
+            <td>2 (R, M)</td>
+        </tr>
+        <tr>
+            <td>0010</td>
+            <td>MOVEM</td>
+            <td>2 (R, M)</td>
+        </tr>
+        <tr>
+            <td>0011</td>
             <td>IN</td>
             <td>1 (R)</td>
         </tr>
         <tr>
-            <td>0110</td>
+            <td>0100</td>
             <td>OUT</td>
             <td>1 (R)</td>
         </tr>
         <tr>
+            <td>0101</td>
+            <td>ADD</td>
+            <td>3 (R, R, M) or 2 (R, M)</td>
+        </tr>
+        <tr>
+            <td>0110</td>
+            <td>SUB</td>
+            <td>3 (R, R, M) or 2 (R, M)</td>
+        </tr>
+        <tr>
             <td>0111</td>
+            <td>MULT</td>
+            <td>3 (R, R, M) or 2 (R, M)</td>
+        </tr>
+        <tr>
+            <td>1000</td>
             <td>JMP</td>
             <td>1 (M)</td>
         </tr>
         <tr>
-            <td>1000</td>
+            <td>1001</td>
             <td>JZ</td>
             <td>1 (M)</td>
         </tr>
         <tr>
-            <td>1001</td>
+            <td>1010</td>
             <td>JNZ</td>
             <td>1 (M)</td>
         </tr>
         <tr>
-            <td>1010</td>
-            <td>MULT</td>
-            <td>2 (R, M)</td>
+            <td>1011</td>
+            <td>DC</td>
+            <td>2 (M, V)</td>
         </tr>
     </table>
+
+- **NOTE:** For instructions accept 3 operands, if you noticed can also accept 2 operands, the assembler will automatically expand it.
+
+**Operands**
+- R: Register
+- M: Memory Address [Data Memory or Program Memory (as per the context)]
+- V: Constant
+
+For more details, refer to the [isa crate](./isa/src/lib.rs)
 
 ### CPU
 - Executes a custom instruction set.
@@ -99,7 +113,9 @@ Symbol table mapping for opcodes:
 ### Assembler
 - Converts `.asm` source files into `.bin` file of raw binary always and `.txt` files of ASCII `0` and `1` bits in `--debug` mode and `--pretty` mode.
 - Instruction format:  
-    `<4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>] [<8-bit program memory address (in case of labels)>]]`
+    `[label:] <4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>] [<8-bit program memory address (in case of labels)>]]`
+
+    - Here, [] are optional and <> are required parts of the instruction.
 
 - Operand format:
     - **Opcode**: 4 bits (0-15)
@@ -158,14 +174,18 @@ Symbol table mapping for opcodes:
 ### Example
 **program.asm**
 ```
-      IN R1               ; Input the number
-      IN R0               ; Input default 1, constants are yet to be implemented
-      MOVEM R0 1          ; Move default 1 to memory location 1
-LOOP: MOVEM R1 0          ; Support of labels; Move input to memory location 0
-      MULT R0 R0 0        ; Multiply value at R0 (default 1 for the first iteration) with input
-      SUB R1 R1 1         ; Subtract 1 from input
+      IN R0               ; Input the number
+      MOVEM R0, 1         ; Move input to memory location 1
+      MOVER R1, 1         ; Move input value at memory location 1 to R1
+      DC 1, 1             ; Constants; declare a constant of value 1 at memory location 1
+      MOVER R0, 1         ; Move value at memory location 1 i.e. 1 to R0
+LOOP: MOVEM, R1, 0        ; Support of labels; Move input to memory location 0
+      MULT R0, 0          ; Multiply value at R0 (default 1 for the first iteration) with input
+      SUB R1, 1           ; Subtract 1 (at memory location 1) from input
       JNZ LOOP            ; Jump to loop if input is not 0
       OUT R0              ; Output the result
+      HALT                ; END of program
+
 ```
 As you might have guessed, the above program calculates the factorial of the input number.
 
@@ -174,39 +194,41 @@ As you might have guessed, the above program calculates the factorial of the inp
 Debug mode enabled.
 Loading binary file: output.bin
 Binary file loaded successfully. Starting execution...
-Executing instruction at PC 0: Opcode = 5, Operands = [1]
-Enter value for register 1: 5
-Executing instruction at PC 6: Opcode = 5, Operands = [0]
-Enter value for register 0: 1
-Executing instruction at PC 12: Opcode = 1, Operands = [0, 1]
-Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
-Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
-Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
-Executing instruction at PC 56: Opcode = 9, Operands = [22]
-Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
-Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
-Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
-Executing instruction at PC 56: Opcode = 9, Operands = [22]
-Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
-Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
-Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
-Executing instruction at PC 56: Opcode = 9, Operands = [22]
-Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
-Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
-Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
-Executing instruction at PC 56: Opcode = 9, Operands = [22]
-Executing instruction at PC 22: Opcode = 1, Operands = [1, 0]
-Executing instruction at PC 32: Opcode = 10, Operands = [0, 0, 0]
-Executing instruction at PC 44: Opcode = 3, Operands = [1, 1, 1]
-Executing instruction at PC 56: Opcode = 9, Operands = [22]
-Executing instruction at PC 68: Opcode = 6, Operands = [0]
+Executing instruction at PC 6: Opcode = 3, Operands = [0]
+Enter value for register 0: 5
+Executing instruction at PC 16: Opcode = 2, Operands = [0, 1]
+Executing instruction at PC 26: Opcode = 1, Operands = [1, 1]
+Executing instruction at PC 42: Opcode = 11, Operands = [1, 1]
+Executing instruction at PC 52: Opcode = 1, Operands = [0, 1]
+Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
+Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
+Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
+Executing instruction at PC 98: Opcode = 10, Operands = [52]
+Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
+Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
+Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
+Executing instruction at PC 98: Opcode = 10, Operands = [52]
+Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
+Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
+Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
+Executing instruction at PC 98: Opcode = 10, Operands = [52]
+Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
+Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
+Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
+Executing instruction at PC 98: Opcode = 10, Operands = [52]
+Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
+Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
+Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
+Executing instruction at PC 98: Opcode = 10, Operands = [52]
+Executing instruction at PC 104: Opcode = 4, Operands = [0]
 Output from register 0: 120
+Executing instruction at PC 108: Opcode = 0, Operands = []
 Execution completed.
 Register 0: 120
 Register 1: 0
 Register 2: 0
 Register 3: 0
-Program Counter: 74
+Program Counter: 109
 End of Execution.
 ```
 Such output shows up if you run the CPU in debug mode i.e. with `--debug` flag:
@@ -228,12 +250,13 @@ _This step is optional and mainly for debugging or cross-checking the assemblerâ
 
 ## Current Limitations
 - Input/Output is basic (manual IN and OUT instructions).
-- No support for constants.
 
 ---
 ## Future Improvements
 - Create a REPL for live assembly and execution.
 - Support for more registers and larger memory space.
+- Support for floating point operations and more instructions.
+
 ---
 ## Motivation
 "Feels good to write 0s and 1s and see them do something."
