@@ -1,4 +1,4 @@
-use isa::{OptTab};
+use isa::{OptSpec};
 use std::io::{stdin, stdout, Read, Write};
 use crate::register::Register;
 use crate::memory::Memory;
@@ -12,7 +12,7 @@ pub struct MyCPU {
     register: Register,
     zero_flag: bool,
     debug: bool,
-    opttab: OptTab
+    opt_spec: OptSpec
 }
 
 impl MyCPU {
@@ -20,7 +20,7 @@ impl MyCPU {
         return Self {
             program_counter: 0,
             eof: 0,
-            opttab: OptTab::clone(),
+            opt_spec: OptSpec::clone(),
             zero_flag: false,
             program_memory: Memory::new(256),
             data_memory: Memory::new(256),
@@ -112,14 +112,18 @@ impl MyCPU {
         self.register.set(dest, product);
     }
 
+    pub fn dc(&mut self, operands: &[u32]) {
+        self.data_memory.set(operands[0], operands[1] as u8);
+        self.eof += 1;
+    }
+
     pub fn opcodes(&mut self, instruction: Instruction) {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
         if self.debug {
             println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", self.program_counter, opcode, operands);
         }
-        self.program_counter = instruction.get_program_counter();
-        let operation_name = &self.opttab.get_by_opcode(&opcode).operation_name;
+        let operation_name = &self.opt_spec.get_by_opcode(&opcode).operation_name;
         match operation_name.to_lowercase().as_str() {
             "mover" => self.mover(operands),
             "movem" => self.movem(operands),
@@ -132,7 +136,8 @@ impl MyCPU {
             "jz" => self.jz(operands),
             "jnz" => self.jnz(operands),
             "mult" => self.mult(operands),
-            _ => println!("Invalid opcode: {}", opcode)
+            "dc" => self.dc(operands),
+            _ => panic!("Operation {} not implemented yet", operation_name)
         }
     }
 

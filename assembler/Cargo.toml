@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 isa = { path = "../isa" }
+regex = "1.11.2"

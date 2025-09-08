@@ -89,9 +89,11 @@ impl Writer {
         self.flush();
         self.add_to_buffer(self.bits_written.into(), 8);
         self.flush();
+        println!("Binary file written to output.bin");
         if let Some(debug_file) = self.debug_file.as_mut() {
             debug_file.write_all(b"\n").unwrap();
             debug_file.flush().unwrap();
+            println!("Debug file written to debug.txt");
         }
     }
 }
