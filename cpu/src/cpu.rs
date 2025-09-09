@@ -117,11 +117,11 @@ impl MyCPU {
         self.eof += 1;
     }
 
-    pub fn opcodes(&mut self, instruction: Instruction) {
+    pub fn execute(&mut self, instruction: Instruction, program_counter: u32) {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
         if self.debug {
-            println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", self.program_counter, opcode, operands);
+            println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", program_counter, opcode, operands);
         }
         let operation_name = &self.opt_spec.get_by_opcode(&opcode).operation_name;
         match operation_name.to_lowercase().as_str() {
@@ -149,25 +149,22 @@ impl MyCPU {
         file.read_to_end(&mut buffer).expect("Failed to read file");
     
         if let Some((&eof_byte, instructions)) = buffer.split_last() {
-            for byte in instructions {
-                for i in 0..8 {
-                    let bit = byte >> (7 - i) & 1;
-                    self.program_memory.set(self.program_counter, bit);
-                    self.program_counter += 1;
-                }
+            for &byte in instructions {
+                self.program_memory.set(self.program_counter, byte);
+                self.program_counter += 1;
             }
             self.eof = eof_byte as u32;
         }
 
         self.program_counter = 0;
         println!("Binary file loaded successfully. Starting execution...");
-
     }
 
     pub fn run(&mut self) {
         while  self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
+            let pc = self.program_counter;
             let instruction = Instruction::new(&self.program_memory, &mut self.program_counter);
-            self.opcodes(instruction);
+            self.execute(instruction, pc);
         }
     }
 

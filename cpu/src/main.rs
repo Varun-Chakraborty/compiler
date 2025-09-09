@@ -19,10 +19,9 @@ pub fn main() {
     let mut cpu = MyCPU::new(debug);
     cpu.load_binary(&args[1]);
     cpu.run();
+    println!("End of Execution.");
     if debug {
-        println!("Execution completed.");
         cpu.print_registers();
         cpu.print_program_counter();
     }
-    println!("End of Execution.");
 }
