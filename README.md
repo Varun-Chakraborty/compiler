@@ -1,4 +1,9 @@
 # Compiler - Rust Version
+![Rust](https://img.shields.io/badge/Rust-1.89.0-orange)
+![Cargo](https://img.shields.io/badge/Cargo-1.89.0-blue)
+![MIT](https://img.shields.io/badge/License-MIT-green)
+
+> **Compiler** is a **from-scratch CPU simulator** paired with a **simple assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
 
 ### Archived Java Version
 This project was originally started as a Java implementation to learn the basics of CPU simulation and assembly.  
@@ -8,8 +13,6 @@ The active development is now focused on the Rust port, due to its closer alignm
 **Note:** Youâ€™ll need Rust installed to run these Rust-based tools.
 
 ## Overview
-This project is a **from-scratch CPU simulator** paired with a simple **assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
-
 The CPU executes basic instructions like data movement, arithmetic, conditional jumps, input/output, and halting.  
 The assembler converts human-readable assembly into a `.bin` file, which the CPU can then run.
 
@@ -17,8 +20,41 @@ This project is being built to learn **system software** and understand **how CP
 
 ---
 
-## Features
-# ISA
+## Table of Contents
+- [Quick Start](#quick-start)
+- [Components](#components)
+  - [ISA](#isa)
+  - [CPU](#cpu)
+  - [Assembler](#assembler)
+- [How It Works](#how-it-works)
+- [Examples](#examples)
+- [Verification](#verification)
+- [Current Limitations](#current-limitations)
+- [Future Improvements](#future-improvements)
+- [Motivation](#motivation)
+
+## Quick Start
+An example assembly code is present in the repository as [`index.asm`](./index.asm).
+
+1. Clone the repository: 
+    ```
+    git clone https://github.com/Varun-Chakraborty/compiler.git
+    ```
+2. Navigate to the project directory:
+    ```
+    cd compiler
+    ```
+3. Run the assembler:
+    ```
+    cargo run -p assembler index.asm
+    ```
+4. Run the CPU:
+    ```
+    cargo run -p cpu output.bin
+    ```
+
+## Components
+### ISA
 Symbol table mapping for opcodes:
     <table>
         <tr>
@@ -88,7 +124,7 @@ Symbol table mapping for opcodes:
         </tr>
     </table>
 
-- **NOTE:** For instructions accept 3 operands, if you noticed can also accept 2 operands, the assembler will automatically expand it.
+- **NOTE:** Some instructions that accept 3 operands can also be written with 2. The assembler automatically expands them.
 
 **Operands**
 - R: Register
@@ -132,14 +168,14 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
 ---
 
 ## How It Works
-<img width="1619" height="502" alt="c81c3311-c1da-4d1e-92e3-f5261516a11b" src="https://github.com/user-attachments/assets/b2ff68ea-197e-4c1d-90fc-007955a14c71" />
+<img width="560" height="200" alt="c81c3311-c1da-4d1e-92e3-f5261516a11b" src="https://github.com/user-attachments/assets/b2ff68ea-197e-4c1d-90fc-007955a14c71" />
 
 1. **Write Assembly**
 
     Example: `ADD R0, R1, 0`
     - This means: add the value at memory location `0` with value at register `R1` and store the result in register `R0`.
 
-    I have already prepared the example assembly code and is present in this repository as `index.asm`.
+    An example assembly code and is present in this repository as [`index.asm`](./index.asm).
 
 2. **Assemble**
 
@@ -155,11 +191,12 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
         cargo run -p assembler index.asm --debug --pretty
         ```
         This produces a human-readable binary alongside the raw binary in debug.txt.
-    2. We have also added a script in the root of the repository to convert the raw binary to ASCII `0` and `1` bits:
+    2. A python script is present in the root of the repository to verify if the raw binary matches the ASCII representation (generated in debug mode).
+        You can run it as:
         ```bash
         python3 convertBinToASCIIBin.py output.bin
         ```
-        This will print the ASCII representation of the binary to the console.
+        This will print the ASCII representation of the binary in the console.
 
 3. **Run on CPU**
 
@@ -170,8 +207,8 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
     The CPU will:
     - Load the program into instruction memory.
     - Fetch, decode, and execute each instruction.
-    - Print debug output showing execution flow and final state.
-### Example
+    - Print output as per the instructions, asking for input or displaying the value of a register.
+## Example
 **program.asm**
 ```
       IN R0               ; Input the number
@@ -189,49 +226,17 @@ LOOP: MOVEM, R1, 0        ; Support of labels; Move input to memory location 0
 ```
 As you might have guessed, the above program calculates the factorial of the input number.
 
-**Output**
+**Output (Normal Mode)**
 ```
-Debug mode enabled.
 Loading binary file: output.bin
 Binary file loaded successfully. Starting execution...
-Executing instruction at PC 6: Opcode = 3, Operands = [0]
 Enter value for register 0: 5
-Executing instruction at PC 16: Opcode = 2, Operands = [0, 1]
-Executing instruction at PC 26: Opcode = 1, Operands = [1, 1]
-Executing instruction at PC 42: Opcode = 11, Operands = [1, 1]
-Executing instruction at PC 52: Opcode = 1, Operands = [0, 1]
-Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
-Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
-Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
-Executing instruction at PC 98: Opcode = 10, Operands = [52]
-Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
-Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
-Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
-Executing instruction at PC 98: Opcode = 10, Operands = [52]
-Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
-Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
-Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
-Executing instruction at PC 98: Opcode = 10, Operands = [52]
-Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
-Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
-Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
-Executing instruction at PC 98: Opcode = 10, Operands = [52]
-Executing instruction at PC 62: Opcode = 2, Operands = [1, 0]
-Executing instruction at PC 74: Opcode = 7, Operands = [0, 0, 0]
-Executing instruction at PC 86: Opcode = 6, Operands = [1, 1, 1]
-Executing instruction at PC 98: Opcode = 10, Operands = [52]
-Executing instruction at PC 104: Opcode = 4, Operands = [0]
 Output from register 0: 120
-Executing instruction at PC 108: Opcode = 0, Operands = []
-Execution completed.
-Register 0: 120
-Register 1: 0
-Register 2: 0
-Register 3: 0
-Program Counter: 109
 End of Execution.
 ```
-Such output shows up if you run the CPU in debug mode i.e. with `--debug` flag:
+
+You can use the `--debug` flag to run the CPU in `debug mode` to visualize the execution of each instruction.
+The complete command would be:
 ```bash
 cargo run -p cpu output.bin --debug
 ```
@@ -239,7 +244,7 @@ cargo run -p cpu output.bin --debug
 ---
 
 ## Verification
-The python script `convertBinToASCIIBin.py` can be used to verify the binary output by converting it to ASCII `0` and `1` bits.
+The python script [`convertBinToASCIIBin.py`](./convertBinToASCIIBin.py) can be used to verify the binary output by converting it to ASCII `0` and `1` bits.
 Run it as follows:
 ```bash
 python3 convertBinToASCIIBin.py output.bin
@@ -262,3 +267,11 @@ _This step is optional and mainly for debugging or cross-checking the assemblerâ
 "Feels good to write 0s and 1s and see them do something."
 
 This project is a practical step toward learning system software by building a CPU from scratch, understanding the fetch-decode-execute cycle, and bridging theory with a working implementation.
+
+---
+## License
+The project is released under the [MIT License](./LICENSE).
+
+---
+## Contributing
+Contributions are welcome! Please fork the repository and create a pull request.
