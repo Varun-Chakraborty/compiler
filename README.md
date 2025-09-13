@@ -3,7 +3,7 @@
 ![MIT](https://img.shields.io/badge/License-MIT-green)
 ![Version](https://img.shields.io/badge/Version-0.1.0-blue)
 
-> **Compiler** is a **from-scratch CPU simulator** paired with a **simple assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
+> **Compiler** is a **from-scratch CPU simulator** paired with a **simple assembler** that can translate custom assembly language into binary code.
 
 ### Archived Java Version
 This project was originally started as a Java implementation to learn the basics of CPU simulation and assembly.  
@@ -13,8 +13,8 @@ The active development is now focused on the Rust port, due to its closer alignm
 **Note:** You’ll need Rust installed to run these Rust-based tools.
 
 ## Overview
-The CPU executes basic instructions like data movement, arithmetic, conditional jumps, input/output, and halting.  
-The assembler converts human-readable assembly into a `.bin` file, which the CPU can then run.
+- The CPU executes basic instructions like data movement, arithmetic, conditional jumps, input/output, and halting.  
+- The assembler converts human-readable assembly into a `.bin` file, which the CPU can then run.
 
 This project is being built to learn **system software** and understand **how CPUs work** at a low level.
 
