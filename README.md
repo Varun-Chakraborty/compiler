@@ -1,7 +1,7 @@
 # Compiler - Rust Version
 ![Rust](https://img.shields.io/badge/Rust-1.89.0-orange)
-![Cargo](https://img.shields.io/badge/Cargo-1.89.0-blue)
 ![MIT](https://img.shields.io/badge/License-MIT-green)
+![Version](https://img.shields.io/badge/Version-0.1.0-blue)
 
 > **Compiler** is a **from-scratch CPU simulator** paired with a **simple assembler** that can translate custom assembly language into machine code (represented as ASCII 0/1 bits).
 
