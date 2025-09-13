@@ -1,4 +1,5 @@
 use isa::{OptSpec};
+use std::error::Error;
 use std::io::{stdin, stdout, Read, Write};
 use crate::register::Register;
 use crate::memory::Memory;
@@ -29,59 +30,65 @@ impl MyCPU {
         };
     }
 
-    pub fn mover(&mut self, operands: &[u32]) { // move to register
+    pub fn mover(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>>{ // move to register
         let register = operands[0];
         let memory = operands[1];
-        self.register.set(register, self.data_memory.get(memory));
+        self.register.set(register, self.data_memory.get(memory)?)?;
+        Ok(())
     }
 
-    pub fn movem(&mut self, operands: &[u32]) { // move from register
+    pub fn movem(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>>{ // move from register
         let register = operands[0];
         let memory = operands[1];
-        let value = self.register.get(register);
+        let value = self.register.get(register)?;
         self.zero_flag = value == 0;
-        self.data_memory.set(memory, value);
+        self.data_memory.set(memory, value)?;
+        Ok(())
     }
 
-    pub fn add(&mut self, operands: &[u32]) {
+    pub fn add(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>>{
         let dest = operands[0];
         let source = operands[1];
         let memory = operands[2];
-        let sum = self.register.get(source) + self.data_memory.get(memory);
+        let sum = self.register.get(source)? + self.data_memory.get(memory)?;
         self.zero_flag = sum == 0;
-        self.register.set(dest, sum);
+        self.register.set(dest, sum)?;
+        Ok(())
     }
 
-    pub fn sub(&mut self, operands: &[u32]) {
+    pub fn sub(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>>{
         let dest = operands[0];
         let source = operands[1];
         let memory = operands[2];
-        let diff = self.register.get(source) - self.data_memory.get(memory);
+        let diff = self.register.get(source)? - self.data_memory.get(memory)?;
         self.zero_flag = diff == 0;
-        self.register.set(dest, diff);
+        self.register.set(dest, diff)?;
+        Ok(())
     }
 
     pub fn halt(&mut self, _: &[u32]) {
         self.program_counter = self.eof;
     }
 
-    pub fn input(&mut self, operands: &[u32]) {
+    pub fn input(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>> {
         let register = operands[0];
         let mut input = String::new();
         print!("Enter value for register {register}: ");
-        stdout().flush().expect("Failed to flush stdout");
-        stdin().read_line(&mut input).expect("Failed to read line");
-        let input = input.trim().parse().unwrap();
+        stdout().flush()?;
+        stdin().read_line(&mut input)?;
+        let input = input.trim().parse()?;
         self.zero_flag = input == 0;
-        self.register.set(register, input);
+        self.register.set(register, input)?;
+        Ok(())
     }
 
-    pub fn output(&mut self, operands: &[u32]) {
+    pub fn output(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>> {
         let register = operands[0];
-        let value = self.register.get(register);
+        let value = self.register.get(register)?;
         self.zero_flag = value == 0;
         println!("Output from register {register}: {value}");
-        stdout().flush().expect("Failed to flush stdout");
+        stdout().flush()?;
+        Ok(())
     }
 
     pub fn jmp(&mut self, operands: &[u32]) {
@@ -103,75 +110,82 @@ impl MyCPU {
         }
     }
 
-    pub fn mult(&mut self, operands: &[u32]) {
+    pub fn mult(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>>{
         let dest = operands[0];
         let source = operands[1];
         let memory = operands[2];
-        let product = self.register.get(source) * self.data_memory.get(memory);
+        let product = self.register.get(source)? * self.data_memory.get(memory)?;
         self.zero_flag = product == 0;
-        self.register.set(dest, product);
+        self.register.set(dest, product)?;
+        Ok(())
     }
 
-    pub fn dc(&mut self, operands: &[u32]) {
-        self.data_memory.set(operands[0], operands[1] as u8);
+    pub fn dc(&mut self, operands: &[u32]) -> Result<(), Box<dyn Error>> {
+        self.data_memory.set(operands[0], operands[1] as u8)?;
         self.eof += 1;
+        Ok(())
     }
 
-    pub fn execute(&mut self, instruction: Instruction, program_counter: u32) {
+    pub fn execute(&mut self, instruction: Instruction, program_counter: u32) -> Result<(), Box<dyn Error>> {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
         if self.debug {
             println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", program_counter, opcode, operands);
         }
-        let operation_name = &self.opt_spec.get_by_opcode(&opcode).operation_name;
+        let operation_name = self.opt_spec.get_by_opcode(&opcode)?.operation_name;
         match operation_name.to_lowercase().as_str() {
-            "mover" => self.mover(operands),
-            "movem" => self.movem(operands),
-            "add" => self.add(operands),
-            "sub" => self.sub(operands),
-            "halt" => self.halt(operands),
-            "in" => self.input(operands),
-            "out" => self.output(operands),
-            "jmp" => self.jmp(operands),
-            "jz" => self.jz(operands),
-            "jnz" => self.jnz(operands),
-            "mult" => self.mult(operands),
-            "dc" => self.dc(operands),
-            _ => panic!("Operation {} not implemented yet", operation_name)
+            "mover" => Ok(self.mover(operands)?),
+            "movem" => Ok(self.movem(operands)?),
+            "add" => Ok(self.add(operands)?),
+            "sub" => Ok(self.sub(operands)?),
+            "halt" => Ok(self.halt(operands)),
+            "in" => Ok(self.input(operands)?),
+            "out" => Ok(self.output(operands)?),
+            "jmp" => Ok(self.jmp(operands)),
+            "jz" => Ok(self.jz(operands)),
+            "jnz" => Ok(self.jnz(operands)),
+            "mult" => Ok(self.mult(operands)?),
+            "dc" => Ok(self.dc(operands)?),
+            _ => Err(format!("Operation {} not implemented yet", operation_name).into())
         }
     }
 
-    pub fn load_binary(&mut self, filepath: &str) {
+    pub fn load_binary(&mut self, filepath: &str) -> Result<(), Box<dyn Error>>{
         use std::fs::File;
         println!("Loading binary file: {}", filepath);
-        let mut file = File::open(filepath).expect("Failed to open file");
+        let mut file = File::open(filepath)?;
         let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer).expect("Failed to read file");
+        file.read_to_end(&mut buffer)?;
     
         if let Some((&eof_byte, instructions)) = buffer.split_last() {
             for &byte in instructions {
-                self.program_memory.set(self.program_counter, byte);
+                self.program_memory.set(self.program_counter, byte)?;
                 self.program_counter += 1;
             }
             self.eof = eof_byte as u32;
         }
 
         self.program_counter = 0;
-        println!("Binary file loaded successfully. Starting execution...");
+        println!("Binary file loaded successfully.");
+        return Ok(());
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        println!("Starting execution...");
         while  self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
             let pc = self.program_counter;
-            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter);
-            self.execute(instruction, pc);
+            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter)?;
+            self.execute(instruction, pc)?;
         }
+        println!("End of Execution.");
+        Ok(())
     }
 
-    pub fn print_registers(&self) {
+    pub fn print_registers(&self) -> Result<(), Box<dyn Error>> {
         for i in 0..4 {
-            println!("Register {i}: {}", self.register.get(i));
-        }
+            println!("Register {i}: {}", self.register.get(i)?);
+        };
+        Ok(())
     }
 
     pub fn print_program_counter(&self) {

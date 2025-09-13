@@ -229,7 +229,8 @@ As you might have guessed, the above program calculates the factorial of the inp
 **Output (Normal Mode)**
 ```
 Loading binary file: output.bin
-Binary file loaded successfully. Starting execution...
+Binary file loaded successfully.
+Starting execution...
 Enter value for register 0: 5
 Output from register 0: 120
 End of Execution.

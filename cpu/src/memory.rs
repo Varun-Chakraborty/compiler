@@ -1,3 +1,5 @@
+use std::error::Error;
+
 pub struct Memory {
     mem: Vec<u8>
 }
@@ -13,17 +15,18 @@ impl Memory {
         return self.mem.len() as u32;
     }
 
-    pub fn set(&mut self, cell: u32, value: u8) {
+    pub fn set(&mut self, cell: u32, value: u8) -> Result<(), Box<dyn Error>> {
         if cell > self.mem.len() as u32 - 1 {
-            panic!("Memory address out of bounds");
+            return Err("Memory address out of bounds".into());
         }
         self.mem[cell as usize] = value;
+        return Ok(());
     }
 
-    pub fn get(&self, cell: u32) -> u8 {
+    pub fn get(&self, cell: u32) -> Result<u8, Box<dyn Error>> {
         if cell > self.mem.len() as u32 - 1 {
-            panic!("Memory address out of bounds");
+            return  Err("Memory address out of bounds".into());
         }
-        return self.mem[cell as usize];
+        return Ok(self.mem[cell as usize]);
     }
 }

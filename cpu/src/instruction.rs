@@ -1,46 +1,50 @@
-use isa::{OptSpec};
+use std::error::Error;
+
 use crate::memory::Memory;
+use isa::OptSpec;
 
 pub struct Instruction {
     opcode: u32,
     operands: Vec<u32>,
 }
 
-fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> u32 {
+fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, Box<dyn Error>> {
     let mut value: u32 = 0;
     for _ in 0..bits_count {
-        let byte = memory.get(start/8);
-        let bit = (byte >> (7 - start%8)) & 1;
+        let byte = memory.get(start / 8)?;
+        let bit = (byte >> (7 - start % 8)) & 1;
         value = (value << 1) | bit as u32;
         start += 1;
     }
-    return value;
+    return Ok(value);
 }
 
 impl Instruction {
-    pub fn new(memory: &Memory, pc: &mut u32) -> Self {
+    pub fn new(memory: &Memory, pc: &mut u32) -> Result<Self, Box<dyn Error>> {
         let optspec = OptSpec::clone();
-        let opcode = get_bits(memory, *pc, 4);
+        let opcode = get_bits(memory, *pc, 4)?;
         *pc += 4;
 
         if !optspec.contains_opcode(opcode) {
-            panic!("Invalid opcode: {}", opcode);
+            return Err(format!("Invalid opcode: {}", opcode).into());
         }
 
         let operands = optspec
-            .get_by_opcode(&opcode)
+            .get_by_opcode(&opcode)?
             .operands
             .iter()
-            .map(|operand_spec| {
-                let operand = get_bits(memory, *pc, operand_spec.bit_count);
-                *pc += operand_spec.bit_count;
-                return operand;
-            }).collect();
+            .fold(
+                Ok(Vec::new()),
+                |acc: Result<Vec<u32>, Box<dyn Error>>, operand_spec| {
+                    let mut acc = acc?;
+                    let operand = get_bits(memory, *pc, operand_spec.bit_count)?;
+                    *pc += operand_spec.bit_count;
+                    acc.push(operand);
+                    return Ok(acc);
+                },
+            )?;
 
-        return Self {
-            opcode,
-            operands,
-        };
+        return Ok(Self { opcode, operands });
     }
 
     pub fn get_opcode(&self) -> u32 {

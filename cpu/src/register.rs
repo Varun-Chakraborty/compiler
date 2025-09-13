@@ -1,3 +1,5 @@
+use std::error::Error;
+
 pub struct Register {
     count: u32,
     regs: Vec<u8>
@@ -5,26 +7,24 @@ pub struct Register {
 
 impl Register {
     pub fn new(count: u32) -> Self {
-        if count < 1 || count > 4 {
-            panic!("Register count must be between 1 and 4");
-        }
         return Self {
             count,
             regs: vec![0; count as usize]
-        }
+        };
     }
 
-    pub fn set(&mut self, register: u32, value: u8) {
+    pub fn set(&mut self, register: u32, value: u8) -> Result<(), Box<dyn std::error::Error>> {
         if register > self.count - 1 {
-            panic!("Invalid register");
+            return Err("Invalid register".into());
         }
         self.regs[register as usize] = value;
+        return Ok(());
     }
 
-    pub fn get(&self, register: u32) -> u8 {
+    pub fn get(&self, register: u32) -> Result<u8, Box<dyn Error>> {
         if register > self.count - 1 {
-            panic!("Invalid register {register}");
+            return Err("Invalid register {register}".into());
         }
-        return self.regs[register as usize];
+        return Ok(self.regs[register as usize]);
     }
 }

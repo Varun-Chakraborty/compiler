@@ -1,3 +1,5 @@
+use std::error::Error;
+
 pub struct OperandSpec {
     pub operand_regex: &'static str,
     pub bit_count: u32,
@@ -88,21 +90,21 @@ impl OptSpec {
         }
     }
 
-    pub fn get_by_opcode(&self, opcode: &u32) -> &Operation {
+    pub fn get_by_opcode(&self, opcode: &u32) -> Result<&Operation, Box<dyn Error>> {
         return match self.opttab.iter().find(|op| op.opcode == *opcode) {
-            Some(op) => op,
-            None => panic!("Invalid opcode: {}", opcode),
+            Some(op) => Ok(op),
+            None => Err(format!("Invalid opcode: {}", opcode).into()),
         };
     }
 
-    pub fn get_by_operation_name(&self, operation_name: &str) -> &Operation {
+    pub fn get_by_operation_name(&self, operation_name: &str) -> Result<&Operation, Box<dyn Error>> {
         return match self
             .opttab
             .iter()
             .find(|op| op.operation_name == operation_name)
         {
-            Some(op) => op,
-            None => panic!("Invalid operation name: {}", operation_name),
+            Some(op) => Ok(op),
+            None => Err(format!("Invalid operation name: {}", operation_name).into()),
         };
     }
 

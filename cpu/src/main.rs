@@ -3,9 +3,11 @@ mod instruction;
 mod memory;
 mod register;
 
+use std::error::Error;
+
 use cpu::MyCPU;
 
-pub fn main() {
+pub fn main() -> Result<(), Box<dyn Error>> {
     // read arguments from command line
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
@@ -17,11 +19,11 @@ pub fn main() {
         println!("Debug mode enabled.");
     }
     let mut cpu = MyCPU::new(debug);
-    cpu.load_binary(&args[1]);
-    cpu.run();
-    println!("End of Execution.");
+    cpu.load_binary(&args[1])?;
+    cpu.run()?;
     if debug {
-        cpu.print_registers();
+        cpu.print_registers()?;
         cpu.print_program_counter();
     }
+    Ok(())
 }

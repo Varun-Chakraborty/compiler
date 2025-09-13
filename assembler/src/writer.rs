@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write};
+use std::{error::Error, fs::File, io::Write};
 pub struct Writer {
     debug: bool,
     pretty: bool,
@@ -11,36 +11,37 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn new(debug: bool, pretty: bool) -> Self {
-        return Self {
+    pub fn new(debug: bool, pretty: bool) -> Result<Self, Box<dyn Error>> {
+        return Ok(Self {
             debug,
             pretty,
             buffer: 0,
             buffer_size_used: 0,
             buffer_size: 8,
             bits_written: 0,
-            bin_file: File::create("output.bin").unwrap(),
+            bin_file: File::create("output.bin")?,
             debug_file: if debug {
-                Some(File::create("debug.txt").unwrap())
+                Some(File::create("debug.txt")?)
             } else {
                 None
             },
-        };
+        });
     }
 
-    pub fn flush(&mut self) {
+    pub fn flush(&mut self) -> Result<(), Box<dyn Error>> {
         if self.buffer_size_used > 0 {
             let remaining_bits = self.buffer_size - self.buffer_size_used;
             if remaining_bits > 0 {
                 self.buffer <<= remaining_bits;
             }
-            self.bin_file.write_all(&[self.buffer]).unwrap();
+            self.bin_file.write_all(&[self.buffer])?;
             self.buffer = 0;
             self.buffer_size_used = 0;
         }
+        Ok(())
     }
 
-    pub fn add_to_buffer(&mut self, mut data: u32, mut bit_count: u8) {
+    pub fn add_to_buffer(&mut self, mut data: u32, mut bit_count: u8) -> Result<(), Box<dyn Error>> {
         while bit_count + self.buffer_size_used >= self.buffer_size {
             let remaining_bits = self.buffer_size - self.buffer_size_used;
 
@@ -53,14 +54,15 @@ impl Writer {
             self.buffer_size_used += remaining_bits;
             data &= (1 << bit_count - remaining_bits) - 1;
             bit_count -= remaining_bits;
-            self.flush();
+            self.flush()?;
         }
         self.buffer = (self.buffer << bit_count) | data as u8;
         self.buffer_size_used += bit_count;
+        Ok(())
     }
 
-    pub fn write(&mut self, data: u32, bit_count: u8) -> () {
-        self.add_to_buffer(data, bit_count);
+    pub fn write(&mut self, data: u32, bit_count: u8) -> Result<(), Box<dyn Error>> {
+        self.add_to_buffer(data, bit_count)?;
         self.bits_written += bit_count;
         if self.debug {
             // convert u8 to binary string padded to bit_count in the front
@@ -68,32 +70,35 @@ impl Writer {
             let mut debug_file: &File;
             match &self.debug_file {
                 Some(file) => debug_file = file,
-                None => return,
+                None => return Ok(()),
             }
-            debug_file.write_all(binary_string.as_bytes()).unwrap();
+            debug_file.write_all(binary_string.as_bytes())?;
             if self.pretty {
-                debug_file.write_all(b" ").unwrap();
+                debug_file.write_all(b" ")?;
             }
         }
+        Ok(())
     }
 
-    pub fn new_line(&mut self) {
+    pub fn new_line(&mut self) -> Result<(), Box<dyn Error>> {
         if self.debug && self.pretty {
             if let Some(debug_file) = self.debug_file.as_mut() {
-                debug_file.write_all(b"\n").unwrap();
+                debug_file.write_all(b"\n")?;
             }
         }
+        Ok(())
     }
 
-    pub fn close(&mut self) {
-        self.flush();
-        self.add_to_buffer(self.bits_written.into(), 8);
-        self.flush();
-        println!("Binary file written to output.bin");
+    pub fn close(&mut self) -> Result<(), Box<dyn Error>> {
+        self.flush()?;
+        self.add_to_buffer(self.bits_written.into(), 8)?;
+        self.flush()?;
+        println!("Binary written to file: output.bin");
         if let Some(debug_file) = self.debug_file.as_mut() {
-            debug_file.write_all(b"\n").unwrap();
-            debug_file.flush().unwrap();
+            debug_file.write_all(b"\n")?;
+            debug_file.flush()?;
             println!("Debug file written to debug.txt");
         }
+        Ok(())
     }
 }
