@@ -16,7 +16,7 @@ fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, Box
         value = (value << 1) | bit as u32;
         start += 1;
     }
-    return Ok(value);
+    Ok(value)
 }
 
 impl Instruction {
@@ -40,11 +40,11 @@ impl Instruction {
                     let operand = get_bits(memory, *pc, operand_spec.bit_count)?;
                     *pc += operand_spec.bit_count;
                     acc.push(operand);
-                    return Ok(acc);
+                    Ok(acc)
                 },
             )?;
 
-        return Ok(Self { opcode, operands });
+        Ok(Self { opcode, operands })
     }
 
     pub fn get_opcode(&self) -> u32 {

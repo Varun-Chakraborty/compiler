@@ -167,7 +167,7 @@ impl MyCPU {
 
         self.program_counter = 0;
         println!("Binary file loaded successfully.");
-        return Ok(());
+        Ok(())
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {

@@ -55,7 +55,7 @@ impl<'a> Instruction<'a> {
         } else {
             self.add_operand(token)?;
         }
-        return Ok(());
+        Ok(())
     }
 
     fn add_label(&mut self, label: &str) {

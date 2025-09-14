@@ -12,7 +12,7 @@ pub struct Writer {
 
 impl Writer {
     pub fn new(debug: bool, pretty: bool) -> Result<Self, Box<dyn Error>> {
-        return Ok(Self {
+        Ok(Self {
             debug,
             pretty,
             buffer: 0,
@@ -25,7 +25,7 @@ impl Writer {
             } else {
                 None
             },
-        });
+        })
     }
 
     pub fn flush(&mut self) -> Result<(), Box<dyn Error>> {

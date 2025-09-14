@@ -20,13 +20,13 @@ impl Memory {
             return Err("Memory address out of bounds".into());
         }
         self.mem[cell as usize] = value;
-        return Ok(());
+        Ok(())
     }
 
     pub fn get(&self, cell: u32) -> Result<u8, Box<dyn Error>> {
         if cell > self.mem.len() as u32 - 1 {
             return  Err("Memory address out of bounds".into());
         }
-        return Ok(self.mem[cell as usize]);
+        Ok(self.mem[cell as usize])
     }
 }

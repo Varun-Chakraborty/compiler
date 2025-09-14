@@ -13,18 +13,18 @@ impl Register {
         };
     }
 
-    pub fn set(&mut self, register: u32, value: u8) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn set(&mut self, register: u32, value: u8) -> Result<(), Box<dyn Error>> {
         if register > self.count - 1 {
             return Err("Invalid register".into());
         }
         self.regs[register as usize] = value;
-        return Ok(());
+        Ok(())
     }
 
     pub fn get(&self, register: u32) -> Result<u8, Box<dyn Error>> {
         if register > self.count - 1 {
             return Err("Invalid register {register}".into());
         }
-        return Ok(self.regs[register as usize]);
+        Ok(self.regs[register as usize])
     }
 }

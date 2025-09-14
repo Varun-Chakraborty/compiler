@@ -10,12 +10,12 @@ pub struct MyAssembler {
 
 impl MyAssembler {
     pub fn new(debug: bool, pretty: bool) -> Result<Self, Box<dyn Error>> {
-        return Ok(Self {
+        Ok(Self {
             location_counter: 0,
             symtab: HashMap::new(),
             writer: Writer::new(debug, pretty)?,
             debug
-        });
+        })
     }
 
     pub fn print_symtab(&self) {

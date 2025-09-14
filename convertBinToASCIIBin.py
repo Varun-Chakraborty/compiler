@@ -12,7 +12,7 @@ def readFile(filename):
             content = file.read()
             # Convert each byte to its binary representation
             binary_content = ''.join(generateBinary(byte_value) for byte_value in content)
-            print(f"Binary content of {filename}: {binary_content}")
+            print(f"Binary content of {filename}:\n{binary_content}")
     except FileNotFoundError:
         print(f"File {filename} not found.")
         return None
