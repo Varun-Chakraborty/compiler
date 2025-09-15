@@ -1,7 +1,31 @@
 use crate::writer::Writer;
-use std::{collections::HashMap, error::Error};
-use isa::{OperandSpec, OptSpec};
+use std::{collections::HashMap, io};
+use isa::{OperandSpec, OptSpec, OptSpecError};
 use regex::Regex;
+
+#[derive(Debug, thiserror::Error)]
+pub enum InstructionError {
+    #[error("I/O error: {0}")]
+    Io (#[from] io::Error),
+    #[error("Regex Compilation error: {0}")]
+    RegexCompilation (#[from] regex::Error),
+    #[error("Operand {0} does not match regex {1}")]
+    RegexMismatch (String, String),
+    #[error("Unable to parse the token: {0}")]
+    ParseInt (String),
+    #[error("A statement can only have one label, {0} is being interpreted as a label")]
+    TooManyLabels (String),
+    #[error("Too many operands")]
+    TooManyOperands (),
+    #[error("Too few operands, expected {expected} but got {got} operands")]
+    TooFewOperands { expected: usize, got: usize },
+    #[error("{0} is not a valid operation name")]
+    OperationName (#[from] OptSpecError),
+    #[error("Symbol {0} not found")]
+    MissingSymbol (String),
+    #[error("Parsing error: {0}")]
+    ParseError (String)
+}
 
 pub struct Instruction<'a> {
     operation_name: &'static str,
@@ -36,7 +60,7 @@ impl<'a> Instruction<'a> {
         };
     }
 
-    pub fn add_token(&mut self, token: String) -> Result<(), Box<dyn Error>> {
+    pub fn add_token(&mut self, token: String) -> Result<(), InstructionError> {
         if token.trim().is_empty() {
             return Ok(());
         }
@@ -49,7 +73,7 @@ impl<'a> Instruction<'a> {
                     self.add_label(&token[0..token.len()-1]);
                     return Ok(());   
                 }
-                return Err("A statement can only have one label".into());
+                return Err(InstructionError::TooManyLabels(token[0..token.len()-1].into()));
             }
             self.set_opcode(token)?;
         } else {
@@ -63,7 +87,7 @@ impl<'a> Instruction<'a> {
         self.label = label.to_string();
     }
 
-    fn set_opcode(&mut self, operation_name: String) -> Result<(), Box<dyn Error>> {
+    fn set_opcode(&mut self, operation_name: String) -> Result<(), InstructionError> {
         let operation = self.optspec.get_by_operation_name(&operation_name)?;
         self.is_empty = false;
         self.operation_name = operation.operation_name;
@@ -72,9 +96,9 @@ impl<'a> Instruction<'a> {
         Ok(())
     }
 
-    fn add_operand(&mut self, operand: String) -> Result<(), Box<dyn Error>> {
+    fn add_operand(&mut self, operand: String) -> Result<(), InstructionError> {
         if !self.is_empty && self.operands.len() >= self.expected_operands.len() {
-            return Err("Too many operands".into());
+            return Err(InstructionError::TooManyOperands());
         }
         self.operands.push(operand);
         Ok(())
@@ -92,7 +116,7 @@ impl<'a> Instruction<'a> {
         println!("Instruction: Opcode = {}, Operands = {:?}", self.opcode, self.operands);
     }
 
-    pub fn done(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn done(&mut self) -> Result<(), InstructionError> {
         if self.is_empty() {
             if self.is_there_label {
                 self.symtab.remove(self.label.as_str());
@@ -114,7 +138,10 @@ impl<'a> Instruction<'a> {
         }
 
         if self.operands.len() != self.expected_operands.len() {
-            return Err(format!("Incomplete instruction, expected {} operands, but got {}", self.expected_operands.len(), self.operands.len()).into());
+            return Err(InstructionError::TooFewOperands {
+                expected: self.expected_operands.len(),
+                got: self.operands.len() 
+            });
         }
 
         if self.debug { 
@@ -131,17 +158,17 @@ impl<'a> Instruction<'a> {
         for (spec, token) in self.expected_operands.iter().zip(self.operands.iter()) {
             let re = Regex::new(spec.operand_regex)?;
             if !re.is_match(&token) {
-                return Err(format!("Operand {} does not match regex {}", token, spec.operand_regex).into());
+                return Err(InstructionError::RegexMismatch(token.to_string(), spec.operand_regex.to_string()));
             }
 
             // parse data
             let value_to_write = if token.starts_with("R") {
-                token[1..].parse()?
+                token[1..].parse().map_err(|_| InstructionError::ParseInt(token.to_string()))?
             } else if token.chars().all(char::is_numeric) {
-                token.parse::<u32>()?
+                token.parse::<u32>().map_err(|_| InstructionError::ParseInt(token.to_string()))?
             } else {
                 *self.symtab.get(token)
-                    .ok_or(format!("Symbol {} not found", token))?
+                    .ok_or(InstructionError::MissingSymbol(token.to_string()))?
             };
 
             // write it down

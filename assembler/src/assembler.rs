@@ -1,5 +1,15 @@
-use std::{collections::HashMap, error::Error, fs::File, io::Read};
-use crate::{instruction::{Instruction}, writer::Writer};
+use std::{collections::HashMap, fs::File, io::{self, Read}};
+use thiserror::Error;
+
+use crate::{instruction::{Instruction, InstructionError}, writer::Writer};
+
+#[derive(Debug, Error)]
+pub enum AssemblerError {
+    #[error("I/O error: {0}")]
+    Io (#[from] std::io::Error),
+    #[error("Instruction error: {0}")]
+    Instruction (#[from] InstructionError),
+}
 
 pub struct MyAssembler {
     symtab: HashMap<String, u32>,
@@ -9,7 +19,7 @@ pub struct MyAssembler {
 }
 
 impl MyAssembler {
-    pub fn new(debug: bool, pretty: bool) -> Result<Self, Box<dyn Error>> {
+    pub fn new(debug: bool, pretty: bool) -> Result<Self, io::Error> {
         Ok(Self {
             location_counter: 0,
             symtab: HashMap::new(),
@@ -23,51 +33,23 @@ impl MyAssembler {
         println!("{:?}", self.symtab);
     }
 
-    pub fn assemble(&mut self, file_name: &str) -> Result<(), Box<dyn Error>>{
+    pub fn assemble(&mut self, file_name: &str) -> Result<(), AssemblerError>{
         use std::io::{BufReader};
         let file = File::open(file_name)?;
         let mut buffer = String::new();
         let mut reader = BufReader::new(file);
-        let mut is_comment = false;
         println!("Assembly file: {}", file_name);
-        match reader.read_to_string(&mut buffer) {
-            Ok(_) => (),
-            Err(e) => return Err(format!("Failed to read file: {}", e).into())
-        }
-        let mut instruction = Instruction::new(&mut self.writer, &mut self.location_counter, &mut self.symtab, self.debug);
-        let mut token = String::new();
-        for c in buffer.chars() {
-            match c {
-                ',' | ' ' | '\t' => {
-                    if is_comment {
-                        continue;
-                    }
-                    instruction.add_token(token)?;
-                },
-                ';' | '\n' => {
-                    if !is_comment {
-                        instruction.add_token(token)?;
-                    }
-                    if c == '\n' {
-                        instruction.done()?;
-                        is_comment = false;
-                        instruction = Instruction::new(&mut self.writer, &mut self.location_counter, &mut self.symtab, self.debug);
-                    }
-                    if c == ';' {
-                        is_comment = true;
-                    }
-                },
-                _ => {
-                    if !is_comment {
-                        token.push(c);
-                    }
-                    continue;
-                }
+        reader.read_to_string(&mut buffer)?;
+        for line in buffer.lines() {
+            let mut instruction = Instruction::new(&mut self.writer, &mut self.location_counter, &mut self.symtab, self.debug);
+            let (opcode, operands) = line.split(';').collect::<Vec<_>>()[0].split_once(' ').ok_or(AssemblerError::Instruction(InstructionError::ParseError(line.to_string())))?;
+            instruction.add_token(opcode.into())?;
+            let  operands = operands.split(',');
+            for operand in operands {
+                instruction.add_token(operand.trim().into())?;
             }
-            token = String::new();
+            instruction.done()?;
         }
-        instruction.add_token(token)?;
-        instruction.done()?;
         if self.debug { 
             self.print_symtab();
         }

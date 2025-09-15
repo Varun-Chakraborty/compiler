@@ -1,4 +1,5 @@
-use std::{error::Error, fs::File, io::Write};
+use std::{fs::{File}, io::{self, Write}};
+
 pub struct Writer {
     debug: bool,
     pretty: bool,
@@ -11,7 +12,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    pub fn new(debug: bool, pretty: bool) -> Result<Self, Box<dyn Error>> {
+    pub fn new(debug: bool, pretty: bool) -> Result<Self, io::Error> {
         Ok(Self {
             debug,
             pretty,
@@ -28,7 +29,7 @@ impl Writer {
         })
     }
 
-    pub fn flush(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn flush(&mut self) -> Result<(), io::Error> {
         if self.buffer_size_used > 0 {
             let remaining_bits = self.buffer_size - self.buffer_size_used;
             if remaining_bits > 0 {
@@ -41,7 +42,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn add_to_buffer(&mut self, mut data: u32, mut bit_count: u8) -> Result<(), Box<dyn Error>> {
+    pub fn add_to_buffer(&mut self, mut data: u32, mut bit_count: u8) -> Result<(), io::Error> {
         while bit_count + self.buffer_size_used >= self.buffer_size {
             let remaining_bits = self.buffer_size - self.buffer_size_used;
 
@@ -61,7 +62,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn write(&mut self, data: u32, bit_count: u8) -> Result<(), Box<dyn Error>> {
+    pub fn write(&mut self, data: u32, bit_count: u8) -> Result<(), io::Error> {
         self.add_to_buffer(data, bit_count)?;
         self.bits_written += bit_count;
         if self.debug {
@@ -80,7 +81,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn new_line(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn new_line(&mut self) -> Result<(), io::Error> {
         if self.debug && self.pretty {
             if let Some(debug_file) = self.debug_file.as_mut() {
                 debug_file.write_all(b"\n")?;
@@ -89,7 +90,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn close(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn close(&mut self) -> Result<(), io::Error> {
         self.flush()?;
         self.add_to_buffer(self.bits_written.into(), 8)?;
         self.flush()?;

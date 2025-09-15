@@ -3,11 +3,9 @@ mod instruction;
 mod memory;
 mod register;
 
-use std::error::Error;
+use crate::cpu::{MyCPU};
 
-use cpu::MyCPU;
-
-pub fn main() -> Result<(), Box<dyn Error>> {
+pub fn main() {
     // read arguments from command line
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
@@ -19,11 +17,28 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         println!("Debug mode enabled.");
     }
     let mut cpu = MyCPU::new(debug);
-    cpu.load_binary(&args[1])?;
-    cpu.run()?;
+    match cpu.load_binary(&args[1]) {
+        Ok(()) => {},
+        Err(err) => {
+            println!("Failed to load binary:\n\t{}", err);
+            std::process::exit(1);
+        },
+    };
+    match cpu.run() {
+        Ok(()) => {},
+        Err(err) => {
+            println!("Failed to run:\n\t{}", err);
+            std::process::exit(1);
+        },
+    };
     if debug {
-        cpu.print_registers()?;
+        match cpu.print_registers() {
+            Ok(()) => {},
+            Err(err) => {
+                println!("Failed to print registers:\n\t{}", err);
+                std::process::exit(1);
+            },
+        };
         cpu.print_program_counter();
     }
-    Ok(())
 }

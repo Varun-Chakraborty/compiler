@@ -1,14 +1,22 @@
-use std::error::Error;
+use crate::memory::{Memory, MemoryError};
+use isa::{OptSpec, OptSpecError};
 
-use crate::memory::Memory;
-use isa::OptSpec;
+#[derive(Debug, thiserror::Error)]
+pub enum InstructionError {
+    #[error("{0}")]
+    MemoryError (#[from] MemoryError),
+    #[error("Invalid opcode: {0}")]
+    InvalidOpcode (u32),
+    #[error("{0}")]
+    OperationError (#[from] OptSpecError)
+}
 
 pub struct Instruction {
     opcode: u32,
     operands: Vec<u32>,
 }
 
-fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, Box<dyn Error>> {
+fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, InstructionError> {
     let mut value: u32 = 0;
     for _ in 0..bits_count {
         let byte = memory.get(start / 8)?;
@@ -20,13 +28,13 @@ fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, Box
 }
 
 impl Instruction {
-    pub fn new(memory: &Memory, pc: &mut u32) -> Result<Self, Box<dyn Error>> {
+    pub fn new(memory: &Memory, pc: &mut u32) -> Result<Self, InstructionError> {
         let optspec = OptSpec::clone();
         let opcode = get_bits(memory, *pc, 4)?;
         *pc += 4;
 
         if !optspec.contains_opcode(opcode) {
-            return Err(format!("Invalid opcode: {}", opcode).into());
+            return Err(InstructionError::InvalidOpcode(opcode));
         }
 
         let operands = optspec
@@ -35,7 +43,7 @@ impl Instruction {
             .iter()
             .fold(
                 Ok(Vec::new()),
-                |acc: Result<Vec<u32>, Box<dyn Error>>, operand_spec| {
+                |acc: Result<Vec<u32>, InstructionError>, operand_spec| {
                     let mut acc = acc?;
                     let operand = get_bits(memory, *pc, operand_spec.bit_count)?;
                     *pc += operand_spec.bit_count;

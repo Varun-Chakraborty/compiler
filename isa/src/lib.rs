@@ -1,5 +1,3 @@
-use std::error::Error;
-
 pub struct OperandSpec {
     pub operand_regex: &'static str,
     pub bit_count: u32,
@@ -19,6 +17,16 @@ impl Operation {
             operands,
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum OptSpecError {
+    #[error("Invalid opcode: {0}")]
+    InvalidCode (u32),
+    #[error("Invalid operation name: {0}")]
+    InvalidOptName (String),
+    #[error("{0}")]
+    OperationError (String),
 }
 
 pub struct OptSpec {
@@ -90,21 +98,21 @@ impl OptSpec {
         }
     }
 
-    pub fn get_by_opcode(&self, opcode: &u32) -> Result<&Operation, Box<dyn Error>> {
+    pub fn get_by_opcode(&self, opcode: &u32) -> Result<&Operation, OptSpecError> {
         return match self.opttab.iter().find(|op| op.opcode == *opcode) {
             Some(op) => Ok(op),
-            None => Err(format!("Invalid opcode: {}", opcode).into()),
+            None => Err(OptSpecError::InvalidCode(*opcode)),
         };
     }
 
-    pub fn get_by_operation_name(&self, operation_name: &str) -> Result<&Operation, Box<dyn Error>> {
+    pub fn get_by_operation_name(&self, operation_name: &str) -> Result<&Operation, OptSpecError> {
         return match self
             .opttab
             .iter()
             .find(|op| op.operation_name == operation_name)
         {
             Some(op) => Ok(op),
-            None => Err(format!("Invalid operation name: {}", operation_name).into()),
+            None => Err(OptSpecError::InvalidOptName(operation_name.into())),
         };
     }
 

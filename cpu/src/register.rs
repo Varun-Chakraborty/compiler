@@ -1,4 +1,8 @@
-use std::error::Error;
+#[derive(Debug, thiserror::Error)]
+pub enum RegisterError {
+    #[error("Invalid register {0}")]
+    InvalidRegister (u32)
+}
 
 pub struct Register {
     count: u32,
@@ -13,17 +17,17 @@ impl Register {
         };
     }
 
-    pub fn set(&mut self, register: u32, value: u8) -> Result<(), Box<dyn Error>> {
+    pub fn set(&mut self, register: u32, value: u8) -> Result<(), RegisterError> {
         if register > self.count - 1 {
-            return Err("Invalid register".into());
+            return Err(RegisterError::InvalidRegister(register));
         }
         self.regs[register as usize] = value;
         Ok(())
     }
 
-    pub fn get(&self, register: u32) -> Result<u8, Box<dyn Error>> {
+    pub fn get(&self, register: u32) -> Result<u8, RegisterError> {
         if register > self.count - 1 {
-            return Err("Invalid register {register}".into());
+            return Err(RegisterError::InvalidRegister(register));
         }
         Ok(self.regs[register as usize])
     }
