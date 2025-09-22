@@ -22,11 +22,11 @@ impl Operation {
 #[derive(Debug, thiserror::Error)]
 pub enum OptSpecError {
     #[error("Invalid opcode: {0}")]
-    InvalidCode (u32),
+    InvalidCode(u32),
     #[error("Invalid operation name: {0}")]
-    InvalidOptName (String),
+    InvalidOptName(String),
     #[error("{0}")]
-    OperationError (String),
+    OperationError(String),
 }
 
 pub struct OptSpec {

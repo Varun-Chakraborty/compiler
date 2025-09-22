@@ -1,21 +1,28 @@
-use std::{collections::HashMap, fs::File, io::{self, Read}};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{self, Read},
+};
 use thiserror::Error;
 
-use crate::{instruction::{Instruction, InstructionError}, writer::Writer};
+use crate::{
+    instruction::{Instruction, InstructionError},
+    writer::Writer,
+};
 
 #[derive(Debug, Error)]
 pub enum AssemblerError {
     #[error("I/O error: {0}")]
-    Io (#[from] std::io::Error),
+    Io(#[from] std::io::Error),
     #[error("Instruction error: {0}")]
-    Instruction (#[from] InstructionError),
+    Instruction(#[from] InstructionError),
 }
 
 pub struct MyAssembler {
     symtab: HashMap<String, u32>,
     location_counter: u32,
     writer: Writer,
-    debug: bool
+    debug: bool,
 }
 
 impl MyAssembler {
@@ -24,7 +31,7 @@ impl MyAssembler {
             location_counter: 0,
             symtab: HashMap::new(),
             writer: Writer::new(debug, pretty)?,
-            debug
+            debug,
         })
     }
 
@@ -33,24 +40,24 @@ impl MyAssembler {
         println!("{:?}", self.symtab);
     }
 
-    pub fn assemble(&mut self, file_name: &str) -> Result<(), AssemblerError>{
-        use std::io::{BufReader};
+    pub fn assemble(&mut self, file_name: &str) -> Result<(), AssemblerError> {
+        use std::io::BufReader;
         let file = File::open(file_name)?;
         let mut buffer = String::new();
         let mut reader = BufReader::new(file);
         println!("Assembly file: {}", file_name);
         reader.read_to_string(&mut buffer)?;
         for line in buffer.lines() {
-            let mut instruction = Instruction::new(&mut self.writer, &mut self.location_counter, &mut self.symtab, self.debug);
-            let (opcode, operands) = line.split(';').collect::<Vec<_>>()[0].split_once(' ').ok_or(AssemblerError::Instruction(InstructionError::ParseError(line.to_string())))?;
-            instruction.add_token(opcode.into())?;
-            let  operands = operands.split(',');
-            for operand in operands {
-                instruction.add_token(operand.trim().into())?;
-            }
+            let mut instruction = Instruction::new(
+                &mut self.writer,
+                &mut self.location_counter,
+                &mut self.symtab,
+                self.debug,
+            );
+            instruction.parse(line)?;
             instruction.done()?;
         }
-        if self.debug { 
+        if self.debug {
             self.print_symtab();
         }
         self.writer.close()?;

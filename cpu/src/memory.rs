@@ -1,18 +1,18 @@
 #[derive(Debug, thiserror::Error)]
 pub enum MemoryError {
     #[error("Memory address out of bounds")]
-    OutOfBounds ()
+    OutOfBounds(),
 }
 
 pub struct Memory {
-    mem: Vec<u8>
+    mem: Vec<u8>,
 }
 
 impl Memory {
     pub fn new(size: u32) -> Self {
         return Self {
-            mem: vec![0; size as usize]
-        }
+            mem: vec![0; size as usize],
+        };
     }
 
     pub fn size(&self) -> u32 {
@@ -29,7 +29,7 @@ impl Memory {
 
     pub fn get(&self, cell: u32) -> Result<u8, MemoryError> {
         if cell > self.mem.len() as u32 - 1 {
-            return  Err(MemoryError::OutOfBounds());
+            return Err(MemoryError::OutOfBounds());
         }
         Ok(self.mem[cell as usize])
     }

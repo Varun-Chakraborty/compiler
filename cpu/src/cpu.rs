@@ -1,26 +1,26 @@
-use isa::{OptSpec, OptSpecError};
-use std::io::{self, stdin, stdout, Read, Write};
-use std::num::ParseIntError;
-use crate::register::{Register, RegisterError};
-use crate::memory::{Memory, MemoryError};
 use crate::instruction::{Instruction, InstructionError};
+use crate::memory::{Memory, MemoryError};
+use crate::register::{Register, RegisterError};
+use isa::{OptSpec, OptSpecError};
+use std::io::{self, Read, Write, stdin, stdout};
+use std::num::ParseIntError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CPUError {
     #[error("{0}")]
-    Memory (#[from] MemoryError),
+    Memory(#[from] MemoryError),
     #[error("{0}")]
-    Register (#[from] RegisterError),
+    Register(#[from] RegisterError),
     #[error("{0}")]
-    IO (#[from] io::Error),
+    IO(#[from] io::Error),
     #[error("{0}")]
-    ParseInt (#[from] ParseIntError),
+    ParseInt(#[from] ParseIntError),
     #[error("{0}")]
-    OptSpec (#[from] OptSpecError),
+    OptSpec(#[from] OptSpecError),
     #[error("Operation {0} not implemented yet")]
-    NoImplementation (String),
+    NoImplementation(String),
     #[error("{0}")]
-    Instruction (#[from] InstructionError)
+    Instruction(#[from] InstructionError),
 }
 
 pub struct MyCPU {
@@ -31,7 +31,7 @@ pub struct MyCPU {
     register: Register,
     zero_flag: bool,
     debug: bool,
-    opt_spec: OptSpec
+    opt_spec: OptSpec,
 }
 
 impl MyCPU {
@@ -44,18 +44,20 @@ impl MyCPU {
             program_memory: Memory::new(256),
             data_memory: Memory::new(256),
             register: Register::new(4),
-            debug
+            debug,
         };
     }
 
-    pub fn mover(&mut self, operands: &[u32]) -> Result<(), CPUError>{ // move to register
+    pub fn mover(&mut self, operands: &[u32]) -> Result<(), CPUError> {
+        // move to register
         let register = operands[0];
         let memory = operands[1];
         self.register.set(register, self.data_memory.get(memory)?)?;
         Ok(())
     }
 
-    pub fn movem(&mut self, operands: &[u32]) -> Result<(), CPUError>{ // move from register
+    pub fn movem(&mut self, operands: &[u32]) -> Result<(), CPUError> {
+        // move from register
         let register = operands[0];
         let memory = operands[1];
         let value = self.register.get(register)?;
@@ -64,7 +66,7 @@ impl MyCPU {
         Ok(())
     }
 
-    pub fn add(&mut self, operands: &[u32]) -> Result<(), CPUError>{
+    pub fn add(&mut self, operands: &[u32]) -> Result<(), CPUError> {
         let dest = operands[0];
         let source = operands[1];
         let memory = operands[2];
@@ -74,7 +76,7 @@ impl MyCPU {
         Ok(())
     }
 
-    pub fn sub(&mut self, operands: &[u32]) -> Result<(), CPUError>{
+    pub fn sub(&mut self, operands: &[u32]) -> Result<(), CPUError> {
         let dest = operands[0];
         let source = operands[1];
         let memory = operands[2];
@@ -128,7 +130,7 @@ impl MyCPU {
         }
     }
 
-    pub fn mult(&mut self, operands: &[u32]) -> Result<(), CPUError>{
+    pub fn mult(&mut self, operands: &[u32]) -> Result<(), CPUError> {
         let dest = operands[0];
         let source = operands[1];
         let memory = operands[2];
@@ -144,11 +146,18 @@ impl MyCPU {
         Ok(())
     }
 
-    pub fn execute(&mut self, instruction: Instruction, program_counter: u32) -> Result<(), CPUError> {
+    pub fn execute(
+        &mut self,
+        instruction: Instruction,
+        program_counter: u32,
+    ) -> Result<(), CPUError> {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
         if self.debug {
-            println!("Executing instruction at PC {}: Opcode = {}, Operands = {:?}", program_counter, opcode, operands);
+            println!(
+                "Executing instruction at PC {}: Opcode = {}, Operands = {:?}",
+                program_counter, opcode, operands
+            );
         }
         let operation_name = self.opt_spec.get_by_opcode(&opcode)?.operation_name;
         match operation_name.to_lowercase().as_str() {
@@ -164,17 +173,17 @@ impl MyCPU {
             "jnz" => Ok(self.jnz(operands)),
             "mult" => Ok(self.mult(operands)?),
             "dc" => Ok(self.dc(operands)?),
-            _ => Err(CPUError::NoImplementation(operation_name.to_string()))
+            _ => Err(CPUError::NoImplementation(operation_name.to_string())),
         }
     }
 
-    pub fn load_binary(&mut self, filepath: &str) -> Result<(), CPUError>{
+    pub fn load_binary(&mut self, filepath: &str) -> Result<(), CPUError> {
         use std::fs::File;
         println!("Loading binary file: {}", filepath);
         let mut file = File::open(filepath)?;
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)?;
-    
+
         if let Some((&eof_byte, instructions)) = buffer.split_last() {
             for &byte in instructions {
                 self.program_memory.set(self.program_counter, byte)?;
@@ -190,7 +199,7 @@ impl MyCPU {
 
     pub fn run(&mut self) -> Result<(), CPUError> {
         println!("Starting execution...");
-        while  self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
+        while self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
             let pc = self.program_counter;
             let instruction = Instruction::new(&self.program_memory, &mut self.program_counter)?;
             self.execute(instruction, pc)?;
@@ -202,7 +211,7 @@ impl MyCPU {
     pub fn print_registers(&self) -> Result<(), CPUError> {
         for i in 0..4 {
             println!("Register {i}: {}", self.register.get(i)?);
-        };
+        }
         Ok(())
     }
 

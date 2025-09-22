@@ -4,11 +4,11 @@ use isa::{OptSpec, OptSpecError};
 #[derive(Debug, thiserror::Error)]
 pub enum InstructionError {
     #[error("{0}")]
-    MemoryError (#[from] MemoryError),
+    MemoryError(#[from] MemoryError),
     #[error("Invalid opcode: {0}")]
-    InvalidOpcode (u32),
+    InvalidOpcode(u32),
     #[error("{0}")]
-    OperationError (#[from] OptSpecError)
+    OperationError(#[from] OptSpecError),
 }
 
 pub struct Instruction {
@@ -37,20 +37,16 @@ impl Instruction {
             return Err(InstructionError::InvalidOpcode(opcode));
         }
 
-        let operands = optspec
-            .get_by_opcode(&opcode)?
-            .operands
-            .iter()
-            .fold(
-                Ok(Vec::new()),
-                |acc: Result<Vec<u32>, InstructionError>, operand_spec| {
-                    let mut acc = acc?;
-                    let operand = get_bits(memory, *pc, operand_spec.bit_count)?;
-                    *pc += operand_spec.bit_count;
-                    acc.push(operand);
-                    Ok(acc)
-                },
-            )?;
+        let operands = optspec.get_by_opcode(&opcode)?.operands.iter().fold(
+            Ok(Vec::new()),
+            |acc: Result<Vec<u32>, InstructionError>, operand_spec| {
+                let mut acc = acc?;
+                let operand = get_bits(memory, *pc, operand_spec.bit_count)?;
+                *pc += operand_spec.bit_count;
+                acc.push(operand);
+                Ok(acc)
+            },
+        )?;
 
         Ok(Self { opcode, operands })
     }

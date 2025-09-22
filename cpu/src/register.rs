@@ -1,19 +1,19 @@
 #[derive(Debug, thiserror::Error)]
 pub enum RegisterError {
     #[error("Invalid register {0}")]
-    InvalidRegister (u32)
+    InvalidRegister(u32),
 }
 
 pub struct Register {
     count: u32,
-    regs: Vec<u8>
+    regs: Vec<u8>,
 }
 
 impl Register {
     pub fn new(count: u32) -> Self {
         return Self {
             count,
-            regs: vec![0; count as usize]
+            regs: vec![0; count as usize],
         };
     }
 

@@ -1,10 +1,10 @@
-mod writer;
-mod instruction;
 mod assembler;
+mod instruction;
+mod writer;
 
-use std::{process};
+use std::process;
 
-use crate::assembler::{MyAssembler};
+use crate::assembler::MyAssembler;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -25,7 +25,7 @@ fn main() {
         Err(err) => {
             println!("Failed to create assembler:\n\t{}", err);
             process::exit(1);
-        },
+        }
     };
     if let Err(err) = assembler.assemble(&args[1]) {
         println!("Failed to assemble:\n\t{}", err);

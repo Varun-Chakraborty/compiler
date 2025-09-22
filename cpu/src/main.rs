@@ -3,7 +3,7 @@ mod instruction;
 mod memory;
 mod register;
 
-use crate::cpu::{MyCPU};
+use crate::cpu::MyCPU;
 
 pub fn main() {
     // read arguments from command line
@@ -18,26 +18,26 @@ pub fn main() {
     }
     let mut cpu = MyCPU::new(debug);
     match cpu.load_binary(&args[1]) {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(err) => {
             println!("Failed to load binary:\n\t{}", err);
             std::process::exit(1);
-        },
+        }
     };
     match cpu.run() {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(err) => {
             println!("Failed to run:\n\t{}", err);
             std::process::exit(1);
-        },
+        }
     };
     if debug {
         match cpu.print_registers() {
-            Ok(()) => {},
+            Ok(()) => {}
             Err(err) => {
                 println!("Failed to print registers:\n\t{}", err);
                 std::process::exit(1);
-            },
+            }
         };
         cpu.print_program_counter();
     }

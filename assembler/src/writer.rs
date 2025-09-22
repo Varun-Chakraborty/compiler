@@ -1,4 +1,7 @@
-use std::{fs::{File}, io::{self, Write}};
+use std::{
+    fs::File,
+    io::{self, Write},
+};
 
 pub struct Writer {
     debug: bool,
