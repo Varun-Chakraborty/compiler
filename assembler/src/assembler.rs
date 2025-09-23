@@ -1,13 +1,9 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{self, Read},
-};
+use std::{collections::HashMap, fs::File, io::Read};
 use thiserror::Error;
 
 use crate::{
     instruction::{Instruction, InstructionError},
-    writer::Writer,
+    writer::{Writer, WriterError},
 };
 
 #[derive(Debug, Error)]
@@ -16,6 +12,10 @@ pub enum AssemblerError {
     Io(#[from] std::io::Error),
     #[error("Instruction error: {0}")]
     Instruction(#[from] InstructionError),
+    #[error("{0}")]
+    WriterError(#[from] WriterError),
+    #[error("Symbol {0} not found")]
+    MissingSymbol(String),
 }
 
 pub struct MyAssembler {
@@ -23,15 +23,17 @@ pub struct MyAssembler {
     location_counter: u32,
     writer: Writer,
     debug: bool,
+    tii: HashMap<String, u32>,
 }
 
 impl MyAssembler {
-    pub fn new(debug: bool, pretty: bool) -> Result<Self, io::Error> {
+    pub fn new(debug: bool, pretty: bool) -> Result<Self, AssemblerError> {
         Ok(Self {
             location_counter: 0,
             symtab: HashMap::new(),
             writer: Writer::new(debug, pretty)?,
             debug,
+            tii: HashMap::new(),
         })
     }
 
@@ -53,6 +55,7 @@ impl MyAssembler {
                 &mut self.location_counter,
                 &mut self.symtab,
                 self.debug,
+                &mut self.tii,
             );
             instruction.parse(line)?;
             instruction.done()?;
@@ -60,7 +63,12 @@ impl MyAssembler {
         if self.debug {
             self.print_symtab();
         }
-        self.writer.close()?;
+        if !self.tii.is_empty() {
+            return Err(AssemblerError::MissingSymbol(
+                self.tii.keys().next().unwrap().to_string(),
+            ));
+        }
+        self.writer.done()?;
         println!("Assembly completed.");
         Ok(())
     }

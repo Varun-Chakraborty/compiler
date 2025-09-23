@@ -1,7 +1,16 @@
 use std::{
     fs::File,
     io::{self, Write},
+    mem,
 };
+
+#[derive(Debug, thiserror::Error)]
+pub enum WriterError {
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
+    #[error("{0} can't be converted to a digit")]
+    ParseInt(char),
+}
 
 pub struct Writer {
     debug: bool,
@@ -9,20 +18,20 @@ pub struct Writer {
     buffer: u8,
     buffer_size_used: u8,
     buffer_size: u8,
-    bits_written: u8,
+    bits_buffer: Vec<u8>,
     bin_file: File,
     debug_file: Option<File>,
 }
 
 impl Writer {
-    pub fn new(debug: bool, pretty: bool) -> Result<Self, io::Error> {
+    pub fn new(debug: bool, pretty: bool) -> Result<Self, WriterError> {
         Ok(Self {
             debug,
             pretty,
             buffer: 0,
             buffer_size_used: 0,
             buffer_size: 8,
-            bits_written: 0,
+            bits_buffer: Vec::new(),
             bin_file: File::create("output.bin")?,
             debug_file: if debug {
                 Some(File::create("debug.txt")?)
@@ -45,7 +54,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn add_to_buffer(&mut self, mut data: u32, mut bit_count: u8) -> Result<(), io::Error> {
+    pub fn add_to_buffer(&mut self, mut data: u32, mut bit_count: u8) -> Result<(), WriterError> {
         while bit_count + self.buffer_size_used >= self.buffer_size {
             let remaining_bits = self.buffer_size - self.buffer_size_used;
 
@@ -65,9 +74,8 @@ impl Writer {
         Ok(())
     }
 
-    pub fn write(&mut self, data: u32, bit_count: u8) -> Result<(), io::Error> {
+    pub fn write1(&mut self, data: u32, bit_count: u8) -> Result<(), WriterError> {
         self.add_to_buffer(data, bit_count)?;
-        self.bits_written += bit_count;
         if self.debug {
             // convert u8 to binary string padded to bit_count in the front
             let binary_string = format!("{:0>width$b}", data, width = bit_count as usize);
@@ -84,7 +92,36 @@ impl Writer {
         Ok(())
     }
 
-    pub fn new_line(&mut self) -> Result<(), io::Error> {
+    pub fn write(&mut self, data: u32, bit_count: u8) -> Result<(), WriterError> {
+        let binary = format!("{:0>width$b}", data, width = bit_count as usize);
+        for bit in binary.chars() {
+            self.bits_buffer
+                .push(bit.to_digit(10).ok_or(WriterError::ParseInt(bit))? as u8);
+        }
+        Ok(())
+    }
+
+    pub fn patch(&mut self, location: u32, data: u32, bit_count: u8) -> Result<(), WriterError> {
+        let binary = format!("{:0>width$b}", data, width = bit_count as usize);
+        for (i, bit) in binary.chars().enumerate() {
+            self.bits_buffer[location as usize + i] =
+                bit.to_digit(10).ok_or(WriterError::ParseInt(bit))? as u8;
+        }
+        Ok(())
+    }
+
+    pub fn done(&mut self) -> Result<(), WriterError> {
+        let bits_buffer = mem::take(&mut self.bits_buffer);
+        let len = bits_buffer.len();
+        bits_buffer.iter().try_for_each(|bit| {
+            self.write1(*bit as u32, 1)?;
+            Ok::<(), WriterError>(())
+        })?;
+        self.close(len as u32)?;
+        Ok(())
+    }
+
+    pub fn new_line(&mut self) -> Result<(), WriterError> {
         if self.debug && self.pretty {
             if let Some(debug_file) = self.debug_file.as_mut() {
                 debug_file.write_all(b"\n")?;
@@ -93,9 +130,9 @@ impl Writer {
         Ok(())
     }
 
-    pub fn close(&mut self) -> Result<(), io::Error> {
+    pub fn close(&mut self, bits_written: u32) -> Result<(), WriterError> {
         self.flush()?;
-        self.add_to_buffer(self.bits_written.into(), 8)?;
+        self.add_to_buffer(bits_written, 8)?;
         self.flush()?;
         println!("Binary written to file: output.bin");
         if let Some(debug_file) = self.debug_file.as_mut() {

@@ -34,7 +34,7 @@ This project is being built to learn **system software** and understand **how CP
 - [Motivation](#motivation)
 
 ## Quick Start
-An example assembly code is present in the repository as [`index.asm`](./index.asm).
+Example assembly codes are present in the repository in the [`examples`](./examples) folder.
 
 1. Clone the repository: 
     ```
@@ -46,7 +46,7 @@ An example assembly code is present in the repository as [`index.asm`](./index.a
     ```
 3. Run the assembler:
     ```
-    cargo run -p assembler index.asm
+    cargo run -p assembler examples/fact.asm
     ```
 4. Run the CPU:
     ```
@@ -181,14 +181,14 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
 
     Run the assembler to convert your `.asm` file into a `.bin` file:
     ```bash
-    cargo run -p assembler index.asm
+    cargo run -p assembler examples/fact.asm
     ```
     This produces raw binary in output.bin.
     
     Note:
     1. The assembler also generates a `.txt` file with ASCII `0` and `1` bits if run in debug mode.
         ```bash
-        cargo run -p assembler index.asm --debug --pretty
+        cargo run -p assembler examples/fact.asm --debug --pretty
         ```
         This produces a human-readable binary alongside the raw binary in debug.txt.
     2. A python script is present in the root of the repository to verify if the raw binary matches the ASCII representation (generated in debug mode).

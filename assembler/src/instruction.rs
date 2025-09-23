@@ -1,7 +1,7 @@
-use crate::writer::Writer;
+use crate::writer::{Writer, WriterError};
 use isa::{OperandSpec, OptSpec, OptSpecError};
 use regex::Regex;
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, io, mem};
 
 #[derive(Debug, thiserror::Error)]
 pub enum InstructionError {
@@ -15,22 +15,24 @@ pub enum InstructionError {
     ParseInt(String),
     #[error("A statement can only have one label, {0} is being interpreted as a label")]
     TooManyLabels(String),
-    #[error("Too many operands")]
-    TooManyOperands(),
+    #[error("Label {0} already in use")]
+    LabelAlreadyInUse(String),
+    #[error("Too many operands at line: {0}")]
+    TooManyOperands(String),
     #[error("Too few operands, expected {expected} but got {got} operands\n\tat line: {line}")]
     TooFewOperands {
         expected: usize,
         got: usize,
         line: String,
     },
-    #[error("{0} is not a valid operation name")]
+    #[error("{0}")]
     OperationName(#[from] OptSpecError),
-    #[error("Symbol {0} not found")]
-    MissingSymbol(String),
-    #[error("Parsing error: {0}")]
-    ParseError(String),
-    #[error("Opcode is missing")]
-    OpcodeMissing(),
+    #[error("Parsing error: {message}")]
+    ParseError { message: String },
+    #[error("Opcode is missing at line: {line}")]
+    OpcodeMissing { line: String },
+    #[error("{0}")]
+    WriterError(#[from] WriterError),
 }
 
 pub struct Instruction<'a> {
@@ -47,6 +49,7 @@ pub struct Instruction<'a> {
     symtab: &'a mut HashMap<String, u32>,
     debug: bool,
     line: String,
+    tii: &'a mut HashMap<String, u32>,
 }
 
 impl<'a> Instruction<'a> {
@@ -55,6 +58,7 @@ impl<'a> Instruction<'a> {
         location_counter: &'a mut u32,
         symtab: &'a mut HashMap<String, u32>,
         debug: bool,
+        tii: &'a mut HashMap<String, u32>,
     ) -> Self {
         return Self {
             operation_name: "",
@@ -70,37 +74,36 @@ impl<'a> Instruction<'a> {
             symtab,
             debug,
             line: String::new(),
+            tii,
         };
     }
 
-    pub fn add_token(&mut self, token: String) -> Result<(), InstructionError> {
-        if token.trim().is_empty() {
+    fn add_label(&mut self, label: &str) -> Result<(), InstructionError> {
+        match self.symtab.contains_key(label) {
+            true => {
+                return Err(InstructionError::LabelAlreadyInUse(label.to_string()));
+            }
+            false => {
+                if !label.is_empty() {
+                    if self.is_there_label {
+                        return Err(InstructionError::TooManyLabels(label.to_string()));
+                    } else {
+                        self.symtab
+                            .insert(label.to_string(), *self.location_counter);
+                        self.label = label.to_string();
+                    }
+                }
+            }
+        };
+        // check if tii contains this label
+        let is_label_in_tii = self.tii.contains_key(label);
+        if !is_label_in_tii {
             return Ok(());
         }
-
-        if self.is_empty {
-            // if the instruction is empty, the token must be a label or an opcode
-            if token.ends_with(":") {
-                if !self.is_there_label {
-                    self.is_there_label = true;
-                    self.add_label(&token[0..token.len() - 1]);
-                    return Ok(());
-                }
-                return Err(InstructionError::TooManyLabels(
-                    token[0..token.len() - 1].into(),
-                ));
-            }
-            self.set_opcode(token)?;
-        } else {
-            self.add_operand(token)?;
-        }
+        let location = self.tii.get(label).unwrap();
+        self.writer.patch(*location, *self.location_counter, 8)?;
+        self.tii.remove(label);
         Ok(())
-    }
-
-    fn add_label(&mut self, label: &str) {
-        self.symtab
-            .insert(label.to_string(), *self.location_counter);
-        self.label = label.to_string();
     }
 
     fn set_opcode(&mut self, operation_name: String) -> Result<(), InstructionError> {
@@ -114,7 +117,7 @@ impl<'a> Instruction<'a> {
 
     fn add_operand(&mut self, operand: String) -> Result<(), InstructionError> {
         if !self.is_empty && self.operands.len() >= self.expected_operands.len() {
-            return Err(InstructionError::TooManyOperands());
+            return Err(InstructionError::TooManyOperands(self.line.clone()));
         }
         self.operands.push(operand);
         Ok(())
@@ -137,19 +140,48 @@ impl<'a> Instruction<'a> {
 
     pub fn parse(&mut self, line: &str) -> Result<(), InstructionError> {
         self.line = line.to_string();
-        let (opcode, operands) = line
+        let instruction = line
             .split(';')
             .next()
-            .ok_or(InstructionError::ParseError(line.to_string()))?
+            .ok_or(InstructionError::ParseError {
+                message: format!(
+                    "Unable to parse instruction out of line: {}",
+                    line.to_string()
+                ),
+            })?
+            .trim();
+        if let Some((label, instruction)) = instruction.split_once(':') {
+            if instruction.is_empty() {
+                return Err(InstructionError::ParseError {
+                    message: format!("The label cannot be empty: {}", line.to_string()),
+                });
+            }
+            self.add_label(label.trim())?;
+            return self.parse(instruction.trim());
+        }
+
+        if !instruction.contains(' ') {
+            self.set_opcode(instruction.to_string())?;
+            return Ok(());
+        }
+
+        let (opcode, operands) = instruction
             .split_once(' ')
             .map(|(s, t)| (s.trim(), t.trim()))
-            .ok_or(InstructionError::ParseError(line.to_string()))?;
+            .ok_or(InstructionError::ParseError {
+                message: format!(
+                    "Unable to parse opcode and operands out of line: {}",
+                    line.to_string()
+                ),
+            })?;
         if opcode.ends_with(',') || operands.starts_with(',') {
-            return Err(InstructionError::OpcodeMissing());
+            return Err(InstructionError::OpcodeMissing {
+                line: line.to_string(),
+            });
         }
-        self.add_token(opcode.into())?;
+        self.set_opcode(opcode.into())?;
         operands.split(',').try_for_each(|operand| {
-            self.add_token(operand.trim().into())?;
+            self.add_operand(operand.trim().into())?;
             Ok::<(), InstructionError>(())
         })?;
         Ok(())
@@ -166,8 +198,7 @@ impl<'a> Instruction<'a> {
         match self.operation_name {
             "ADD" | "SUB" | "MULT" | "DIV" => {
                 if self.operands.len() == 2 {
-                    let operands = self.operands.clone();
-                    self.operands.clear();
+                    let operands = mem::take(&mut self.operands);
                     self.operands.push(operands[0].clone());
                     self.operands.push(operands[0].clone());
                     self.operands.push(operands[1].clone());
@@ -180,7 +211,7 @@ impl<'a> Instruction<'a> {
             return Err(InstructionError::TooFewOperands {
                 expected: self.expected_operands.len(),
                 got: self.operands.len(),
-                line: self.line.to_string(),
+                line: self.line.clone(),
             });
         }
 
@@ -200,7 +231,7 @@ impl<'a> Instruction<'a> {
             let re = Regex::new(spec.operand_regex)?;
             if !re.is_match(&token) {
                 return Err(InstructionError::RegexMismatch(
-                    token.to_string(),
+                    token.clone(),
                     spec.operand_regex.to_string(),
                 ));
             }
@@ -209,16 +240,19 @@ impl<'a> Instruction<'a> {
             let value_to_write = if token.starts_with("R") {
                 token[1..]
                     .parse()
-                    .map_err(|_| InstructionError::ParseInt(token.to_string()))?
+                    .map_err(|_| InstructionError::ParseInt(token.clone()))?
             } else if token.chars().all(char::is_numeric) {
                 token
                     .parse::<u32>()
-                    .map_err(|_| InstructionError::ParseInt(token.to_string()))?
+                    .map_err(|_| InstructionError::ParseInt(token.clone()))?
             } else {
-                *self
-                    .symtab
-                    .get(token)
-                    .ok_or(InstructionError::MissingSymbol(token.to_string()))?
+                let label = self.symtab.get(token);
+                if label.is_none() {
+                    self.tii.insert(token.clone(), *self.location_counter);
+                    0
+                } else {
+                    *label.unwrap()
+                }
             };
 
             // write it down
