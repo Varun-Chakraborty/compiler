@@ -23,7 +23,7 @@ pub struct MyAssembler {
     location_counter: u32,
     writer: Writer,
     debug: bool,
-    tii: HashMap<String, u32>,
+    tii: HashMap<String, Vec<u32>>,
 }
 
 impl MyAssembler {

@@ -49,7 +49,7 @@ pub struct Instruction<'a> {
     symtab: &'a mut HashMap<String, u32>,
     debug: bool,
     line: String,
-    tii: &'a mut HashMap<String, u32>,
+    tii: &'a mut HashMap<String, Vec<u32>>,
 }
 
 impl<'a> Instruction<'a> {
@@ -58,7 +58,7 @@ impl<'a> Instruction<'a> {
         location_counter: &'a mut u32,
         symtab: &'a mut HashMap<String, u32>,
         debug: bool,
-        tii: &'a mut HashMap<String, u32>,
+        tii: &'a mut HashMap<String, Vec<u32>>,
     ) -> Self {
         return Self {
             operation_name: "",
@@ -96,13 +96,14 @@ impl<'a> Instruction<'a> {
             }
         };
         // check if tii contains this label
-        let is_label_in_tii = self.tii.contains_key(label);
-        if !is_label_in_tii {
-            return Ok(());
+        if let Some(addr_to_patch) = self.tii.remove(label) {
+            for addr in addr_to_patch.iter() {
+                if self.debug {
+                    println!("Patching address: {addr} with: {}", self.location_counter);
+                }
+                self.writer.patch(*addr, *self.location_counter, 8)?;
+            }
         }
-        let location = self.tii.get(label).unwrap();
-        self.writer.patch(*location, *self.location_counter, 8)?;
-        self.tii.remove(label);
         Ok(())
     }
 
@@ -246,12 +247,14 @@ impl<'a> Instruction<'a> {
                     .parse::<u32>()
                     .map_err(|_| InstructionError::ParseInt(token.clone()))?
             } else {
-                let label = self.symtab.get(token);
-                if label.is_none() {
-                    self.tii.insert(token.clone(), *self.location_counter);
-                    0
+                if let Some(location) = self.symtab.get(token) {
+                    *location
                 } else {
-                    *label.unwrap()
+                    self.tii
+                        .entry(token.clone())
+                        .or_default()
+                        .push(*self.location_counter);
+                    0
                 }
             };
 

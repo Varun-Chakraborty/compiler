@@ -52,7 +52,9 @@ impl MyCPU {
         // move to register
         let register = operands[0];
         let memory = operands[1];
-        self.register.set(register, self.data_memory.get(memory)?)?;
+        let value = self.data_memory.get(memory)?;
+        self.zero_flag = value == 0;
+        self.register.set(register, value)?;
         Ok(())
     }
 
@@ -143,6 +145,7 @@ impl MyCPU {
     pub fn dc(&mut self, operands: &[u32]) -> Result<(), CPUError> {
         self.data_memory.set(operands[0], operands[1] as u8)?;
         self.eof += 1;
+        self.zero_flag = operands[1] == 0;
         Ok(())
     }
 
