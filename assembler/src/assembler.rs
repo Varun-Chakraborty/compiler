@@ -19,10 +19,12 @@ pub enum AssemblerError {
 }
 
 pub struct MyAssembler {
+    // To store the symbols
     symtab: HashMap<String, u32>,
     location_counter: u32,
     writer: Writer,
     debug: bool,
+    // To store the instruction whose symbols could not be resolved yet
     tii: HashMap<String, Vec<u32>>,
 }
 

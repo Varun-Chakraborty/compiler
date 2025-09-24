@@ -1,0 +1,53 @@
+# .github/workflows/release.yml
+name: Build and Release
+
+# 1. Trigger this workflow when a new tag is pushed (e.g., v0.1.0)
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build for ${{ matrix.os }}
+    # 2. Run the job on three different operating systems
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      # 3. Checkout your repository's code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 4. Install the Rust toolchain
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      # 5. Build the executables in release mode
+      - name: Build binaries
+        run: cargo build --workspace --release --verbose
+
+      # 6. Package the complete toolchain into one zip file per OS
+      - name: Package Toolchain
+        uses: thedoctor0/zip-release@main
+        with:
+          type: 'zip'
+          # Give the archive a good, descriptive name
+          filename: 'compiler-toolchain-${{ github.ref_name }}-${{ runner.os }}.zip'
+          # List both files to be included in the archive
+          path: |
+            ./target/release/cpu${{ runner.os == 'Windows' && '.exe' || '' }}
+            ./target/release/assembler${{ runner.os == 'Windows' && '.exe' || '' }}
+      
+      # 7. Upload the single toolchain archive to the GitHub Release page
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: 'compiler-toolchain-*.zip' # Update this to match the new filename

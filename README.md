@@ -147,11 +147,14 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
     - **Debug mode**: Prints detailed execution steps.
 
 ### Assembler
+(One pass assembler)
 - Converts `.asm` source files into `.bin` file of raw binary always and `.txt` files of ASCII `0` and `1` bits in `--debug` mode and `--pretty` mode.
 - Instruction format:  
     `[label:] <4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>] [<8-bit program memory address (in case of labels)>]]`
 
     - Here, [] are optional and <> are required parts of the instruction.
+- Uses Symbol Table to resolve labels.
+- Uses Table of Incomplete Instructions to resolve forward references.
 
 - Operand format:
     - **Opcode**: 4 bits (0-15)
