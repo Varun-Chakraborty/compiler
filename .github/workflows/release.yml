@@ -39,15 +39,15 @@ jobs:
         uses: thedoctor0/zip-release@main
         with:
           type: 'zip'
-          # Give the archive a good, descriptive name
           filename: 'compiler-toolchain-${{ github.ref_name }}-${{ runner.os }}.zip'
-          # List both files to be included in the archive
+          directory: './target/release/'
           path: |
-            ./target/release/cpu${{ runner.os == 'Windows' && '.exe' || '' }}
-            ./target/release/assembler${{ runner.os == 'Windows' && '.exe' || '' }}
+            cpu${{ runner.os == 'Windows' && '.exe' || '' }}
+            assembler${{ runner.os == 'Windows' && '.exe' || '' }}
       
       # 7. Upload the single toolchain archive to the GitHub Release page
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: 'compiler-toolchain-*.zip' # Update this to match the new filename
+          # Give it the full path to where the zip file was created
+          files: './target/release/compiler-toolchain-*.zip'
