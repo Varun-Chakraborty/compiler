@@ -2,6 +2,7 @@
 ![Rust](https://img.shields.io/badge/Rust-1.89.0-orange)
 ![MIT](https://img.shields.io/badge/License-MIT-green)
 ![Version](https://img.shields.io/badge/Version-0.1.0-blue)
+[![Release](https://github.com/Varun-Chakraborty/compiler/actions/workflows/release.yml/badge.svg)](https://github.com/Varun-Chakraborty/compiler/actions/workflows/release.yml)
 
 > **Compiler** is a **from-scratch CPU simulator** paired with a **simple assembler** that can translate custom assembly language into binary code.
 
