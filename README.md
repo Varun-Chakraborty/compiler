@@ -1,7 +1,7 @@
 # Compiler - Rust Version
 ![Rust](https://img.shields.io/badge/Rust-1.89.0-orange)
 ![MIT](https://img.shields.io/badge/License-MIT-green)
-![Version](https://img.shields.io/badge/Version-0.1.0-blue)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/Varun-Chakraborty/compiler)
 [![Release](https://github.com/Varun-Chakraborty/compiler/actions/workflows/release.yml/badge.svg)](https://github.com/Varun-Chakraborty/compiler/actions/workflows/release.yml)
 
 > **Compiler** is a **from-scratch CPU simulator** paired with a **simple assembler** that can translate custom assembly language into binary code.
@@ -23,6 +23,8 @@ This project is being built to learn **system software** and understand **how CP
 
 ## Table of Contents
 - [Quick Start](#quick-start)
+  - [Installation](#installation)
+  - [From Source](#from-source)
 - [Components](#components)
   - [ISA](#isa)
   - [CPU](#cpu)
@@ -35,6 +37,14 @@ This project is being built to learn **system software** and understand **how CP
 - [Motivation](#motivation)
 
 ## Quick Start
+You have two options to run the tool:
+
+### Installation
+You can download the latest pre-compiled executables for Windows, macOS, and Linux from the [Latest Release](https://github.com/Varun-Chakraborty/compiler/releases/latest) page.
+
+Just download the .zip archive for your operating system, unzip the file, and you're ready to go!
+
+### From Source
 Example assembly codes are present in the repository in the [`examples`](./examples) folder.
 
 1. Clone the repository: 
@@ -45,11 +55,27 @@ Example assembly codes are present in the repository in the [`examples`](./examp
     ```
     cd compiler
     ```
+3. Here you can **optionally** build the project in release mode if you want to run the binaries or can just use cargo run.
+    ```
+    cargo build --workspace --release --verbose
+    ```
 3. Run the assembler:
+    
+    Using binary:
+    ```
+    ./target/release/assembler examples/fact.asm --bin
+    ```
+    Using cargo run:
     ```
     cargo run -p assembler examples/fact.asm
     ```
 4. Run the CPU:
+    
+    Using binary:
+    ```
+    ./target/release/cpu output.bin
+    ```
+    Using cargo run:
     ```
     cargo run -p cpu output.bin
     ```
@@ -226,7 +252,6 @@ LOOP: MOVEM, R1, 0        ; Support of labels; Move input to memory location 0
       JNZ LOOP            ; Jump to loop if input is not 0
       OUT R0              ; Output the result
       HALT                ; END of program
-
 ```
 As you might have guessed, the above program calculates the factorial of the input number.
 
