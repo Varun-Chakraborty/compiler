@@ -1,8 +1,14 @@
-use std::{collections::HashMap, fs::File, io::Read};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufReader, Read},
+};
 use thiserror::Error;
 
 use crate::{
-    instruction::{Instruction, InstructionError},
+    bin_generator::{BinGenError, BinGenerator},
+    parser::{Parser, ParserError},
+    semantic_analyzer::{SemanticAnalyzer, SemanticError},
     writer::{Writer, WriterError},
 };
 
@@ -10,12 +16,16 @@ use crate::{
 pub enum AssemblerError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("Instruction error: {0}")]
-    Instruction(#[from] InstructionError),
-    #[error("{0}")]
+    #[error("Parser error: {0}")]
+    Instruction(#[from] ParserError),
+    #[error("Writer error: {0}")]
     WriterError(#[from] WriterError),
     #[error("Symbol {0} not found")]
     MissingSymbol(String),
+    #[error("Error in semantic analysis: {0}")]
+    Semantic(#[from] SemanticError),
+    #[error("Binary generation error: {0}")]
+    BinGen(#[from] BinGenError),
 }
 
 pub struct MyAssembler {
@@ -26,6 +36,9 @@ pub struct MyAssembler {
     debug: bool,
     // To store the instruction whose symbols could not be resolved yet
     tii: HashMap<String, Vec<u32>>,
+    parser: Parser,
+    semantic_analyzer: SemanticAnalyzer,
+    bin_generator: BinGenerator,
 }
 
 impl MyAssembler {
@@ -36,31 +49,37 @@ impl MyAssembler {
             writer: Writer::new(debug, pretty)?,
             debug,
             tii: HashMap::new(),
+            parser: Parser::new(),
+            semantic_analyzer: SemanticAnalyzer::new(debug),
+            bin_generator: BinGenerator::new(),
         })
     }
 
     pub fn print_symtab(&self) {
         println!("Symbol Table:");
-        println!("{:?}", self.symtab);
+        println!("{:#?}", self.symtab);
     }
 
     pub fn assemble(&mut self, file_name: &str) -> Result<(), AssemblerError> {
-        use std::io::BufReader;
         let file = File::open(file_name)?;
         let mut buffer = String::new();
+
         let mut reader = BufReader::new(file);
         println!("Assembly file: {}", file_name);
         reader.read_to_string(&mut buffer)?;
         for line in buffer.lines() {
-            let mut instruction = Instruction::new(
-                &mut self.writer,
-                &mut self.location_counter,
+            let instruction = self.parser.parse(line)?;
+
+            let instruction = self.semantic_analyzer.analyze(
+                instruction,
+                line.to_string(),
                 &mut self.symtab,
-                self.debug,
                 &mut self.tii,
-            );
-            instruction.parse(line)?;
-            instruction.done()?;
+                &mut self.location_counter,
+                &mut self.writer,
+            )?;
+            self.bin_generator
+                .generate_binary(instruction, &mut self.writer, &mut self.location_counter)?;
         }
         if self.debug {
             self.print_symtab();

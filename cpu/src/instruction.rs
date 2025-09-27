@@ -41,8 +41,8 @@ impl Instruction {
             Ok(Vec::new()),
             |acc: Result<Vec<u32>, InstructionError>, operand_spec| {
                 let mut acc = acc?;
-                let operand = get_bits(memory, *pc, operand_spec.bit_count)?;
-                *pc += operand_spec.bit_count;
+                let operand = get_bits(memory, *pc, operand_spec.bit_count as u32)?;
+                *pc += operand_spec.bit_count as u32;
                 acc.push(operand);
                 Ok(acc)
             },

@@ -1,270 +1,55 @@
-use crate::writer::{Writer, WriterError};
-use isa::{OperandSpec, OptSpec, OptSpecError};
-use regex::Regex;
-use std::{collections::HashMap, io, mem};
-
-#[derive(Debug, thiserror::Error)]
-pub enum InstructionError {
-    #[error("I/O error: {0}")]
-    Io(#[from] io::Error),
-    #[error("Regex Compilation error: {0}")]
-    RegexCompilation(#[from] regex::Error),
-    #[error("Operand {0} does not match regex {1}")]
-    RegexMismatch(String, String),
-    #[error("Unable to parse the token: {0}")]
-    ParseInt(String),
-    #[error("A statement can only have one label, {0} is being interpreted as a label")]
-    TooManyLabels(String),
-    #[error("Label {0} already in use")]
-    LabelAlreadyInUse(String),
-    #[error("Too many operands at line: {0}")]
-    TooManyOperands(String),
-    #[error("Too few operands, expected {expected} but got {got} operands\n\tat line: {line}")]
-    TooFewOperands {
-        expected: usize,
-        got: usize,
-        line: String,
-    },
-    #[error("{0}")]
-    OperationName(#[from] OptSpecError),
-    #[error("Parsing error: {message}")]
-    ParseError { message: String },
-    #[error("Opcode is missing at line: {line}")]
-    OpcodeMissing { line: String },
-    #[error("{0}")]
-    WriterError(#[from] WriterError),
+#[derive(Debug)]
+pub struct Instruction {
+    pub label: Option<String>,
+    pub operation_name: String,
+    pub operands: Option<Vec<String>>,
 }
 
-pub struct Instruction<'a> {
-    operation_name: &'static str,
-    opcode: u32,
-    operands: Vec<String>,
-    expected_operands: &'static [OperandSpec],
-    optspec: OptSpec,
-    is_empty: bool,
-    is_there_label: bool,
-    label: String,
-    location_counter: &'a mut u32,
-    writer: &'a mut Writer,
-    symtab: &'a mut HashMap<String, u32>,
-    debug: bool,
-    line: String,
-    tii: &'a mut HashMap<String, Vec<u32>>,
-}
-
-impl<'a> Instruction<'a> {
-    pub fn new(
-        writer: &'a mut Writer,
-        location_counter: &'a mut u32,
-        symtab: &'a mut HashMap<String, u32>,
-        debug: bool,
-        tii: &'a mut HashMap<String, Vec<u32>>,
-    ) -> Self {
-        return Self {
-            operation_name: "",
-            opcode: 0,
-            operands: Vec::new(),
-            expected_operands: &[],
-            is_empty: true,
-            is_there_label: false,
-            label: String::new(),
-            optspec: OptSpec::clone(),
-            writer,
-            location_counter,
-            symtab,
-            debug,
-            line: String::new(),
-            tii,
-        };
-    }
-
-    fn add_label(&mut self, label: &str) -> Result<(), InstructionError> {
-        match self.symtab.contains_key(label) {
-            true => {
-                return Err(InstructionError::LabelAlreadyInUse(label.to_string()));
-            }
-            false => {
-                if !label.is_empty() {
-                    if self.is_there_label {
-                        return Err(InstructionError::TooManyLabels(label.to_string()));
-                    } else {
-                        self.symtab
-                            .insert(label.to_string(), *self.location_counter);
-                        self.label = label.to_string();
-                    }
-                }
-            }
-        };
-        // check if tii contains this label
-        if let Some(addr_to_patch) = self.tii.remove(label) {
-            for addr in addr_to_patch.iter() {
-                if self.debug {
-                    println!("Patching address: {addr} with: {}", self.location_counter);
-                }
-                self.writer.patch(*addr, *self.location_counter, 8)?;
-            }
+impl Instruction {
+    pub fn new() -> Self {
+        Self {
+            label: None,
+            operation_name: String::new(),
+            operands: None,
         }
-        Ok(())
     }
 
-    fn set_opcode(&mut self, operation_name: String) -> Result<(), InstructionError> {
-        let operation = self.optspec.get_by_operation_name(&operation_name)?;
-        self.is_empty = false;
-        self.operation_name = operation.operation_name;
-        self.opcode = operation.opcode;
-        self.expected_operands = operation.operands;
-        Ok(())
+    pub fn set_label(&mut self, label: String) {
+        self.label = Some(label);
     }
 
-    fn add_operand(&mut self, operand: String) -> Result<(), InstructionError> {
-        if !self.is_empty && self.operands.len() >= self.expected_operands.len() {
-            return Err(InstructionError::TooManyOperands(self.line.clone()));
+    pub fn set_operation_name(&mut self, operation_name: String) {
+        self.operation_name = operation_name;
+    }
+
+    pub fn add_operand(&mut self, operand: String) {
+        if let Some(operands) = &mut self.operands {
+            operands.push(operand);
+        } else {
+            self.operands = Some(vec![operand]);
         }
-        self.operands.push(operand);
-        Ok(())
     }
 
-    fn increment_location_counter(&mut self, by: u32) {
-        *self.location_counter += by;
-    }
-
-    pub fn is_empty(&self) -> bool {
-        return self.is_empty;
-    }
-
-    pub fn print_instruction(&self) {
+    pub fn print_instruction(instruction: &Instruction, opcode: Option<u32>) {
+        if let Some(opcode) = opcode {
+            println!(
+                "Instruction: Operation_name = {}, Opcode = {}, Operands = {:?}",
+                instruction.operation_name, opcode, instruction.operands
+            );
+        }
         println!(
-            "Instruction: Opcode = {}, Operands = {:?}",
-            self.opcode, self.operands
+            "Instruction: Operation_name = {}, Operands = {:?}",
+            instruction.operation_name, instruction.operands
         );
     }
+}
 
-    pub fn parse(&mut self, line: &str) -> Result<(), InstructionError> {
-        self.line = line.to_string();
-        let instruction = line
-            .split(';')
-            .next()
-            .ok_or(InstructionError::ParseError {
-                message: format!(
-                    "Unable to parse instruction out of line: {}",
-                    line.to_string()
-                ),
-            })?
-            .trim();
-        if let Some((label, instruction)) = instruction.split_once(':') {
-            if instruction.is_empty() {
-                return Err(InstructionError::ParseError {
-                    message: format!("The label cannot be empty: {}", line.to_string()),
-                });
-            }
-            self.add_label(label.trim())?;
-            return self.parse(instruction.trim());
-        }
+pub struct InstructionField {
+    pub value: u32,
+    pub bit_count: u8,
+}
 
-        if !instruction.contains(' ') {
-            self.set_opcode(instruction.to_string())?;
-            return Ok(());
-        }
-
-        let (opcode, operands) = instruction
-            .split_once(' ')
-            .map(|(s, t)| (s.trim(), t.trim()))
-            .ok_or(InstructionError::ParseError {
-                message: format!(
-                    "Unable to parse opcode and operands out of line: {}",
-                    line.to_string()
-                ),
-            })?;
-        if opcode.ends_with(',') || operands.starts_with(',') {
-            return Err(InstructionError::OpcodeMissing {
-                line: line.to_string(),
-            });
-        }
-        self.set_opcode(opcode.into())?;
-        operands.split(',').try_for_each(|operand| {
-            self.add_operand(operand.trim().into())?;
-            Ok::<(), InstructionError>(())
-        })?;
-        Ok(())
-    }
-
-    pub fn done(&mut self) -> Result<(), InstructionError> {
-        if self.is_empty() {
-            if self.is_there_label {
-                self.symtab.remove(self.label.as_str());
-            }
-            return Ok(());
-        }
-
-        match self.operation_name {
-            "ADD" | "SUB" | "MULT" | "DIV" => {
-                if self.operands.len() == 2 {
-                    let operands = mem::take(&mut self.operands);
-                    self.operands.push(operands[0].clone());
-                    self.operands.push(operands[0].clone());
-                    self.operands.push(operands[1].clone());
-                }
-            }
-            _ => (),
-        }
-
-        if self.operands.len() != self.expected_operands.len() {
-            return Err(InstructionError::TooFewOperands {
-                expected: self.expected_operands.len(),
-                got: self.operands.len(),
-                line: self.line.clone(),
-            });
-        }
-
-        if self.debug {
-            self.print_instruction();
-        }
-
-        // write the opcode
-        self.writer
-            .write(self.opcode, self.optspec.opcode_bit_count as u8)?;
-        self.increment_location_counter(self.optspec.opcode_bit_count);
-
-        let mut bits_written = 0;
-
-        // zip operand and the corresponding operand spec
-        for (spec, token) in self.expected_operands.iter().zip(self.operands.iter()) {
-            let re = Regex::new(spec.operand_regex)?;
-            if !re.is_match(&token) {
-                return Err(InstructionError::RegexMismatch(
-                    token.clone(),
-                    spec.operand_regex.to_string(),
-                ));
-            }
-
-            // parse data
-            let value_to_write = if token.starts_with("R") {
-                token[1..]
-                    .parse()
-                    .map_err(|_| InstructionError::ParseInt(token.clone()))?
-            } else if token.chars().all(char::is_numeric) {
-                token
-                    .parse::<u32>()
-                    .map_err(|_| InstructionError::ParseInt(token.clone()))?
-            } else {
-                if let Some(location) = self.symtab.get(token) {
-                    *location
-                } else {
-                    self.tii
-                        .entry(token.clone())
-                        .or_default()
-                        .push(*self.location_counter);
-                    0
-                }
-            };
-
-            // write it down
-            self.writer.write(value_to_write, spec.bit_count as u8)?;
-            bits_written += spec.bit_count;
-        }
-
-        self.increment_location_counter(bits_written);
-        self.writer.new_line()?;
-        Ok(())
-    }
+pub struct SemanticallyParsedInstruction {
+    pub opcode: InstructionField,
+    pub operands: Option<Vec<InstructionField>>,
 }

@@ -162,7 +162,7 @@ impl MyCPU {
                 program_counter, opcode, operands
             );
         }
-        let operation_name = self.opt_spec.get_by_opcode(&opcode)?.operation_name;
+        let operation_name = &self.opt_spec.get_by_opcode(&opcode)?.operation_name;
         match operation_name.to_lowercase().as_str() {
             "mover" => Ok(self.mover(operands)?),
             "movem" => Ok(self.movem(operands)?),

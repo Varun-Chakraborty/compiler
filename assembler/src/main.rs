@@ -1,5 +1,8 @@
 mod assembler;
+mod bin_generator;
 mod instruction;
+mod parser;
+mod semantic_analyzer;
 mod writer;
 
 use std::process;

@@ -1,18 +1,28 @@
+#[derive(Clone)]
 pub struct OperandSpec {
-    pub operand_regex: &'static str,
-    pub bit_count: u32,
+    pub operand_regex: String,
+    pub bit_count: u8,
+}
+
+impl OperandSpec {
+    fn new(operand_regex: &str, bit_count: u8) -> Self {
+        Self {
+            operand_regex: operand_regex.to_string(),
+            bit_count: bit_count,
+        }
+    }
 }
 
 pub struct Operation {
-    pub operation_name: &'static str,
+    pub operation_name: String,
     pub opcode: u32,
-    pub operands: &'static [OperandSpec],
+    pub operands: Vec<OperandSpec>,
 }
 
 impl Operation {
-    fn new(operation_name: &'static str, opcode: u32, operands: &'static [OperandSpec]) -> Self {
+    fn new(operation_name: &str, opcode: u32, operands: Vec<OperandSpec>) -> Self {
         Self {
-            operation_name: operation_name,
+            operation_name: operation_name.to_string(),
             opcode,
             operands,
         }
@@ -30,70 +40,37 @@ pub enum OptSpecError {
 }
 
 pub struct OptSpec {
-    pub opcode_bit_count: u32,
+    pub opcode_bit_count: u8,
     opttab: Vec<Operation>,
 }
 
 impl OptSpec {
     pub fn clone() -> Self {
-        const NO_OPERANDS: &[OperandSpec] = &[];
-        const REG_MEM: &[OperandSpec] = &[
-            OperandSpec {
-                operand_regex: "R[0-3]",
-                bit_count: 2,
-            },
-            OperandSpec {
-                operand_regex: "[0-9]+",
-                bit_count: 4,
-            },
+        let no_operands = vec![];
+        let reg_mem = vec![OperandSpec::new("R[0-3]", 2), OperandSpec::new("[0-9]+", 4)];
+        let reg_reg_mem = vec![
+            OperandSpec::new("R[0-3]", 2),
+            OperandSpec::new("R[0-3]", 2),
+            OperandSpec::new("[0-9]+", 4),
         ];
-        const REG_REG_MEM: &[OperandSpec] = &[
-            OperandSpec {
-                operand_regex: "R[0-3]",
-                bit_count: 2,
-            },
-            OperandSpec {
-                operand_regex: "R[0-3]",
-                bit_count: 2,
-            },
-            OperandSpec {
-                operand_regex: "[0-9]+",
-                bit_count: 4,
-            },
-        ];
-        const REG_ONLY: &[OperandSpec] = &[OperandSpec {
-            operand_regex: "R[0-3]",
-            bit_count: 2,
-        }];
-        const LABEL: &[OperandSpec] = &[OperandSpec {
-            operand_regex: "[a-zA-Z]+",
-            bit_count: 8,
-        }];
-        const MEM_CONSTANT: &[OperandSpec] = &[
-            OperandSpec {
-                operand_regex: "[0-9]+",
-                bit_count: 4,
-            },
-            OperandSpec {
-                operand_regex: "[0-9]+",
-                bit_count: 8,
-            },
-        ];
+        let reg_only = vec![OperandSpec::new("R[0-3]", 2)];
+        let mem_constant = vec![OperandSpec::new("[0-9]+", 4), OperandSpec::new("[0-9]+", 4)];
+        let label = vec![OperandSpec::new("[A-Z]+", 8)];
         Self {
             opcode_bit_count: 4,
             opttab: vec![
-                Operation::new("HALT", 0, NO_OPERANDS),
-                Operation::new("MOVER", 1, REG_MEM),
-                Operation::new("MOVEM", 2, REG_MEM),
-                Operation::new("IN", 3, REG_ONLY),
-                Operation::new("OUT", 4, REG_ONLY),
-                Operation::new("ADD", 5, REG_REG_MEM),
-                Operation::new("SUB", 6, REG_REG_MEM),
-                Operation::new("MULT", 7, REG_REG_MEM),
-                Operation::new("JMP", 8, LABEL),
-                Operation::new("JZ", 9, LABEL),
-                Operation::new("JNZ", 10, LABEL),
-                Operation::new("DC", 11, MEM_CONSTANT),
+                Operation::new("HALT", 0, no_operands),
+                Operation::new("MOVER", 1, reg_mem.clone()),
+                Operation::new("MOVEM", 2, reg_mem),
+                Operation::new("IN", 3, reg_only.clone()),
+                Operation::new("OUT", 4, reg_only),
+                Operation::new("ADD", 5, reg_reg_mem.clone()),
+                Operation::new("SUB", 6, reg_reg_mem.clone()),
+                Operation::new("MULT", 7, reg_reg_mem),
+                Operation::new("JMP", 8, label.clone()),
+                Operation::new("JZ", 9, label.clone()),
+                Operation::new("JNZ", 10, label),
+                Operation::new("DC", 11, mem_constant),
             ],
         }
     }
