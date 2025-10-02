@@ -30,8 +30,8 @@ fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, Ins
 impl Instruction {
     pub fn new(memory: &Memory, pc: &mut u32) -> Result<Self, InstructionError> {
         let optspec = OptSpec::clone();
-        let opcode = get_bits(memory, *pc, 4)?;
-        *pc += 4;
+        let opcode = get_bits(memory, *pc, optspec.opcode_bit_count as u32)?;
+        *pc += optspec.opcode_bit_count as u32;
 
         if !optspec.contains_opcode(opcode) {
             return Err(InstructionError::InvalidOpcode(opcode));
