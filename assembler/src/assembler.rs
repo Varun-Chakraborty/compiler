@@ -6,10 +6,7 @@ use std::{
 use thiserror::Error;
 
 use crate::{
-    bin_generator::{BinGenError, BinGenerator},
-    parser::{Parser, ParserError},
-    semantic_analyzer::{SemanticAnalyzer, SemanticError},
-    writer::{Writer, WriterError},
+    bin_generator::{BinGenError, BinGenerator}, delimiter::DelimiterTable, parser::{Parser, ParserError}, semantic_analyzer::{SemanticAnalyzer, SemanticError}, writer::{Writer, WriterError}
 };
 
 #[derive(Debug, Error)]
@@ -39,6 +36,7 @@ pub struct MyAssembler {
     parser: Parser,
     semantic_analyzer: SemanticAnalyzer,
     bin_generator: BinGenerator,
+    delimiter_table: DelimiterTable
 }
 
 impl MyAssembler {
@@ -52,6 +50,7 @@ impl MyAssembler {
             parser: Parser::new(),
             semantic_analyzer: SemanticAnalyzer::new(debug),
             bin_generator: BinGenerator::new(),
+            delimiter_table: DelimiterTable::new(),
         })
     }
 
@@ -79,7 +78,7 @@ impl MyAssembler {
                 &mut self.writer,
             )?;
             self.bin_generator
-                .generate_binary(instruction, &mut self.writer, &mut self.location_counter)?;
+                .generate_binary(instruction, &mut self.writer, &mut self.location_counter, &mut self.delimiter_table)?;
         }
         if self.debug {
             self.print_symtab();
@@ -89,7 +88,7 @@ impl MyAssembler {
                 self.tii.keys().next().unwrap().to_string(),
             ));
         }
-        self.writer.done()?;
+        self.writer.done(&mut self.delimiter_table)?;
         println!("Assembly completed.");
         Ok(())
     }

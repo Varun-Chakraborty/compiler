@@ -204,7 +204,7 @@ impl MyCPU {
         println!("Starting execution...");
         while self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
             let pc = self.program_counter;
-            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter)?;
+            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter, &self.opt_spec)?;
             self.execute(instruction, pc)?;
         }
         println!("End of Execution.");

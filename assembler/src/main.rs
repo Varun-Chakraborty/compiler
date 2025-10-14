@@ -4,6 +4,7 @@ mod instruction;
 mod parser;
 mod semantic_analyzer;
 mod writer;
+mod delimiter;
 
 use std::process;
 

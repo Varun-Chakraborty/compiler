@@ -4,6 +4,8 @@ use std::{
     mem,
 };
 
+use crate::delimiter::{DelimiterTable};
+
 #[derive(Debug, thiserror::Error)]
 pub enum WriterError {
     #[error("I/O error: {0}")]
@@ -74,20 +76,17 @@ impl Writer {
         Ok(())
     }
 
-    pub fn write1(&mut self, data: u32, bit_count: u8) -> Result<(), WriterError> {
-        self.add_to_buffer(data, bit_count)?;
+    pub fn write1(&mut self, data: u32) -> Result<(), WriterError> {
+        self.add_to_buffer(data, 1)?;
         if self.debug {
             // convert u8 to binary string padded to bit_count in the front
-            let binary_string = format!("{:0>width$b}", data, width = bit_count as usize);
+            let binary_string = format!("{:0>width$b}", data, width = 1 as usize);
             let mut debug_file: &File;
             match &self.debug_file {
                 Some(file) => debug_file = file,
                 None => return Ok(()),
             }
             debug_file.write_all(binary_string.as_bytes())?;
-            if self.pretty {
-                debug_file.write_all(b" ")?;
-            }
         }
         Ok(())
     }
@@ -110,23 +109,24 @@ impl Writer {
         Ok(())
     }
 
-    pub fn done(&mut self) -> Result<(), WriterError> {
+    pub fn done(&mut self, delimiter_table: &mut DelimiterTable) -> Result<(), WriterError> {
         let bits_buffer = mem::take(&mut self.bits_buffer);
         let len = bits_buffer.len();
-        bits_buffer.iter().try_for_each(|bit| {
-            self.write1(*bit as u32, 1)?;
+        bits_buffer.iter().enumerate().try_for_each(|(i, bit)| {
+            self.write1(*bit as u32)?;
+            if let None = delimiter_table.get_current() {
+                delimiter_table.next();
+            }
+            println!("{:?}", delimiter_table.get_current());
+            if self.debug && self.pretty && let Some(delimiter) = delimiter_table.get_current() {
+                if (delimiter.address as usize) == i+1 && let Some(debug_file) = self.debug_file.as_mut() {
+                    debug_file.write_all(delimiter.symbol.as_bytes())?;
+                    delimiter_table.next();
+                }
+            }
             Ok::<(), WriterError>(())
         })?;
         self.close(len as u32)?;
-        Ok(())
-    }
-
-    pub fn new_line(&mut self) -> Result<(), WriterError> {
-        if self.debug && self.pretty {
-            if let Some(debug_file) = self.debug_file.as_mut() {
-                debug_file.write_all(b"\n")?;
-            }
-        }
         Ok(())
     }
 

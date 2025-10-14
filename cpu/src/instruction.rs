@@ -1,5 +1,5 @@
 use crate::memory::{Memory, MemoryError};
-use isa::{OptSpec, OptSpecError};
+use isa::{OptSpecError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum InstructionError {
@@ -28,8 +28,7 @@ fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, Ins
 }
 
 impl Instruction {
-    pub fn new(memory: &Memory, pc: &mut u32) -> Result<Self, InstructionError> {
-        let optspec = OptSpec::clone();
+    pub fn new(memory: &Memory, pc: &mut u32, optspec: &isa::OptSpec) -> Result<Self, InstructionError> {
         let opcode = get_bits(memory, *pc, optspec.opcode_bit_count as u32)?;
         *pc += optspec.opcode_bit_count as u32;
 
