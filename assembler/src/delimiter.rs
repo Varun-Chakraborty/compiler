@@ -13,7 +13,11 @@ pub struct DelimiterTable {
 
 impl DelimiterTable {
     pub fn new() -> Self {
-        Self { table: Vec::new(), current: None, current_address: 0 }
+        Self {
+            table: Vec::new(),
+            current: None,
+            current_address: 0,
+        }
     }
 
     pub fn append(&mut self, symbol: String, address: usize) {

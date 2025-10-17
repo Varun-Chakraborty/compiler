@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use isa::{OptSpec, OptSpecError};
+use logger::{Logger, LoggerError};
 use regex::Regex;
 
 use crate::{
@@ -32,6 +33,8 @@ pub enum SemanticError {
     WriterError(#[from] WriterError),
     #[error("The label in the statement '{0}' has no name")]
     LabelHasNoName(String),
+    #[error("Logger error: {0}")]
+    LoggerError(#[from] LoggerError),
 }
 
 pub struct SemanticAnalyzer {
@@ -76,12 +79,16 @@ impl SemanticAnalyzer {
         writer: &mut Writer,
         tii: &mut HashMap<String, Vec<u32>>,
         location_counter: &mut u32,
+        logger: &mut Logger,
     ) -> Result<(), SemanticError> {
         if let Some(addr_to_patch) = tii.remove(&label) {
-            println!("Patching label: {}", label);
+            logger.log(format!("Patching label: {}", label))?;
             for addr in addr_to_patch.iter() {
                 if self.debug {
-                    println!("Patching address: {} with: {}", addr, location_counter);
+                    logger.log(format!(
+                        "Patching address: {} with: {}",
+                        addr, location_counter
+                    ))?;
                 }
                 writer.patch(*addr, *location_counter, 8)?;
             }
@@ -97,9 +104,10 @@ impl SemanticAnalyzer {
         tii: &mut HashMap<String, Vec<u32>>,
         location_counter: &mut u32,
         writer: &mut Writer,
+        logger: &mut Logger,
     ) -> Result<SemanticallyParsedInstruction, SemanticError> {
         if self.debug {
-            Instruction::print_instruction(&instruction, None);
+            Instruction::print_instruction(&instruction, None, logger)?;
         }
 
         let instruction = self.pseudo_op(instruction)?;
@@ -107,7 +115,6 @@ impl SemanticAnalyzer {
         let operation = self
             .optspec
             .get_by_operation_name(&instruction.operation_name)?;
-
 
         let opcode = operation.opcode;
 
@@ -153,7 +160,7 @@ impl SemanticAnalyzer {
                         symtab.insert(label.to_string(), *location_counter);
                     }
                 };
-                self.patch(label, writer, tii, location_counter)?;
+                self.patch(label, writer, tii, location_counter, logger)?;
             }
         }
 

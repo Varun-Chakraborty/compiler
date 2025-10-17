@@ -1,5 +1,7 @@
 use crate::{
-    delimiter::DelimiterTable, instruction::SemanticallyParsedInstruction, writer::{Writer, WriterError}
+    delimiter::DelimiterTable,
+    instruction::SemanticallyParsedInstruction,
+    writer::{Writer, WriterError},
 };
 use thiserror::Error;
 

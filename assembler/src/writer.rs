@@ -4,7 +4,7 @@ use std::{
     mem,
 };
 
-use crate::delimiter::{DelimiterTable};
+use crate::delimiter::DelimiterTable;
 
 #[derive(Debug, thiserror::Error)]
 pub enum WriterError {
@@ -117,9 +117,13 @@ impl Writer {
             if let None = delimiter_table.get_current() {
                 delimiter_table.next();
             }
-            println!("{:?}", delimiter_table.get_current());
-            if self.debug && self.pretty && let Some(delimiter) = delimiter_table.get_current() {
-                if (delimiter.address as usize) == i+1 && let Some(debug_file) = self.debug_file.as_mut() {
+            if self.debug
+                && self.pretty
+                && let Some(delimiter) = delimiter_table.get_current()
+            {
+                if (delimiter.address as usize) == i + 1
+                    && let Some(debug_file) = self.debug_file.as_mut()
+                {
                     debug_file.write_all(delimiter.symbol.as_bytes())?;
                     delimiter_table.next();
                 }

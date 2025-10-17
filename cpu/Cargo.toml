@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 isa = { workspace = true }
 thiserror = { workspace = true }
+logger = { workspace = true }
+args = { workspace = true }

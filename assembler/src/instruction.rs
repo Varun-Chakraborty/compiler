@@ -1,3 +1,5 @@
+use logger::{Logger, LoggerError};
+
 #[derive(Debug)]
 pub struct Instruction {
     pub label: Option<String>,
@@ -30,17 +32,22 @@ impl Instruction {
         }
     }
 
-    pub fn print_instruction(instruction: &Instruction, opcode: Option<u32>) {
+    pub fn print_instruction(
+        instruction: &Instruction,
+        opcode: Option<u32>,
+        logger: &mut Logger,
+    ) -> Result<(), LoggerError> {
         if let Some(opcode) = opcode {
-            println!(
+            logger.log(format!(
                 "Instruction: Operation_name = {}, Opcode = {}, Operands = {:?}",
                 instruction.operation_name, opcode, instruction.operands
-            );
+            ))?;
         }
-        println!(
+        logger.log(format!(
             "Instruction: Operation_name = {}, Operands = {:?}",
             instruction.operation_name, instruction.operands
-        );
+        ))?;
+        Ok(())
     }
 }
 

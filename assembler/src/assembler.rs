@@ -1,3 +1,5 @@
+use args::Args;
+use logger::{LogTo, Logger, LoggerError};
 use std::{
     collections::HashMap,
     fs::File,
@@ -6,7 +8,11 @@ use std::{
 use thiserror::Error;
 
 use crate::{
-    bin_generator::{BinGenError, BinGenerator}, delimiter::DelimiterTable, parser::{Parser, ParserError}, semantic_analyzer::{SemanticAnalyzer, SemanticError}, writer::{Writer, WriterError}
+    bin_generator::{BinGenError, BinGenerator},
+    delimiter::DelimiterTable,
+    parser::{Parser, ParserError},
+    semantic_analyzer::{SemanticAnalyzer, SemanticError},
+    writer::{Writer, WriterError},
 };
 
 #[derive(Debug, Error)]
@@ -23,6 +29,8 @@ pub enum AssemblerError {
     Semantic(#[from] SemanticError),
     #[error("Binary generation error: {0}")]
     BinGen(#[from] BinGenError),
+    #[error("Logger error: {0}")]
+    Logger(#[from] LoggerError),
 }
 
 pub struct MyAssembler {
@@ -36,21 +44,43 @@ pub struct MyAssembler {
     parser: Parser,
     semantic_analyzer: SemanticAnalyzer,
     bin_generator: BinGenerator,
-    delimiter_table: DelimiterTable
+    delimiter_table: DelimiterTable,
+    logger: Logger,
 }
 
 impl MyAssembler {
-    pub fn new(debug: bool, pretty: bool) -> Result<Self, AssemblerError> {
+    pub fn new(args: Args) -> Result<Self, AssemblerError> {
         Ok(Self {
             location_counter: 0,
             symtab: HashMap::new(),
-            writer: Writer::new(debug, pretty)?,
-            debug,
+            writer: Writer::new(args.debug, args.pretty)?,
+            debug: args.debug,
             tii: HashMap::new(),
             parser: Parser::new(),
-            semantic_analyzer: SemanticAnalyzer::new(debug),
+            semantic_analyzer: SemanticAnalyzer::new(args.debug),
             bin_generator: BinGenerator::new(),
             delimiter_table: DelimiterTable::new(),
+            logger: Logger::new(
+                if let Some(filename) = args.filename {
+                    filename
+                } else {
+                    "assembler.txt".to_string()
+                },
+                if let Some(path) = args.path {
+                    path
+                } else {
+                    "./logs/".to_string()
+                },
+                if let Some(log_to) = args.log_to {
+                    if log_to == "file" {
+                        LogTo::File
+                    } else {
+                        LogTo::Console
+                    }
+                } else {
+                    LogTo::Console
+                },
+            )?,
         })
     }
 
@@ -76,9 +106,14 @@ impl MyAssembler {
                 &mut self.tii,
                 &mut self.location_counter,
                 &mut self.writer,
+                &mut self.logger,
             )?;
-            self.bin_generator
-                .generate_binary(instruction, &mut self.writer, &mut self.location_counter, &mut self.delimiter_table)?;
+            self.bin_generator.generate_binary(
+                instruction,
+                &mut self.writer,
+                &mut self.location_counter,
+                &mut self.delimiter_table,
+            )?;
         }
         if self.debug {
             self.print_symtab();

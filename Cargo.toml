@@ -1,7 +1,9 @@
 [workspace]
-members = ["cpu", "assembler", "isa"]
+members = ["cpu", "assembler", "isa", "logger", "args"]
 resolver = "3"
 
 [workspace.dependencies]
 isa = { path = "isa" }
 thiserror = "2.0.16"
+logger = { path = "logger" }
+args = { path = "args" }

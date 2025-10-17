@@ -1,7 +1,9 @@
 use crate::instruction::{Instruction, InstructionError};
 use crate::memory::{Memory, MemoryError};
 use crate::register::{Register, RegisterError};
+use args::Args;
 use isa::{OptSpec, OptSpecError};
+use logger::{LogTo, Logger, LoggerError};
 use std::io::{self, Read, Write, stdin, stdout};
 use std::num::ParseIntError;
 
@@ -21,6 +23,8 @@ pub enum CPUError {
     NoImplementation(String),
     #[error("{0}")]
     Instruction(#[from] InstructionError),
+    #[error("Logger error: {0}")]
+    Logger(#[from] LoggerError),
 }
 
 pub struct MyCPU {
@@ -32,11 +36,12 @@ pub struct MyCPU {
     zero_flag: bool,
     debug: bool,
     opt_spec: OptSpec,
+    logger: Logger,
 }
 
 impl MyCPU {
-    pub fn new(debug: bool) -> Self {
-        return Self {
+    pub fn new(args: Args) -> Result<Self, CPUError> {
+        Ok(Self {
             program_counter: 0,
             eof: 0,
             opt_spec: OptSpec::clone(),
@@ -44,8 +49,29 @@ impl MyCPU {
             program_memory: Memory::new(256),
             data_memory: Memory::new(256),
             register: Register::new(4),
-            debug,
-        };
+            logger: Logger::new(
+                if let Some(filename) = args.filename {
+                    filename
+                } else {
+                    "cpu.txt".to_string()
+                },
+                if let Some(path) = args.path {
+                    path
+                } else {
+                    "./logs/".to_string()
+                },
+                if let Some(log_to) = args.log_to {
+                    if log_to == "file" {
+                        LogTo::File
+                    } else {
+                        LogTo::Console
+                    }
+                } else {
+                    LogTo::Console
+                },
+            )?,
+            debug: args.debug,
+        })
     }
 
     pub fn mover(&mut self, operands: &[u32]) -> Result<(), CPUError> {
@@ -157,10 +183,10 @@ impl MyCPU {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
         if self.debug {
-            println!(
+            self.logger.log(format!(
                 "Executing instruction at PC {}: Opcode = {}, Operands = {:?}",
                 program_counter, opcode, operands
-            );
+            ))?;
         }
         let operation_name = &self.opt_spec.get_by_opcode(&opcode)?.operation_name;
         match operation_name.to_lowercase().as_str() {
@@ -204,10 +230,24 @@ impl MyCPU {
         println!("Starting execution...");
         while self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
             let pc = self.program_counter;
-            let instruction = Instruction::new(&self.program_memory, &mut self.program_counter, &self.opt_spec)?;
+            let instruction = Instruction::new(
+                &self.program_memory,
+                &mut self.program_counter,
+                &self.opt_spec,
+            )?;
             self.execute(instruction, pc)?;
         }
         println!("End of Execution.");
+        if self.debug {
+            match self.print_registers() {
+                Ok(()) => {}
+                Err(err) => {
+                    println!("Failed to print registers:\n\t{}", err);
+                    std::process::exit(1);
+                }
+            };
+            self.print_program_counter();
+        }
         Ok(())
     }
 
