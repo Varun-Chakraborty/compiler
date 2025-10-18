@@ -49,17 +49,17 @@ Example assembly codes are present in the repository in the [`examples`](./examp
 
 1. Clone the repository: 
     ```
-    git clone https://github.com/Varun-Chakraborty/compiler.git
+    git clone https://github.com/Varun-Chakraborty/compiler
     ```
 2. Navigate to the project directory:
     ```
     cd compiler
     ```
-3. Here you can **optionally** build the project in release mode if you want to run the binaries or can just use cargo run.
+3. Here you can **optionally** build the project in release mode if you want to run the binaries or can just use cargo run as described in point 4.
     ```
     cargo build --workspace --release --verbose
     ```
-3. Run the assembler:
+4. Run the assembler:
     
     Using binary:
     ```
@@ -69,7 +69,7 @@ Example assembly codes are present in the repository in the [`examples`](./examp
     ```
     cargo run -p assembler examples/fact.asm
     ```
-4. Run the CPU:
+5. Run the CPU:
     
     Using binary:
     ```
@@ -169,14 +169,24 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
     - **Program memory**
     - **Program counter (PC)**
 
-- Supports two modes:
-    - **Normal mode**: Executes instructions sequentially.
+- Supports several flags:
+    - **Basic Instruction**: Minimal arguments mandatorily required.
+        ```
+        cargo run -p cpu output.bin
+        ```
     - **Debug mode**: Prints detailed execution steps.
+        ```
+        cargo run -p cpu output.bin --debug
+        ```
+    - **Log**: Writes execution log to a file/console.
+        ```
+        cargo run -p cpu output.bin --log=file
+        ```
 
 ### Assembler
 (One pass assembler)
-- Converts `.asm` source files into `.bin` file of raw binary always and `.txt` files of ASCII `0` and `1` bits in `--debug` mode and `--pretty` mode.
-- Instruction format:  
+- Converts `.asm` source files into binary.
+- Basic Instruction format:  
     `[label:] <4-bit opcode> [<2-bit register> <4-bit operand> [<4-bit operand3>] [<8-bit program memory address (in case of labels)>]]`
 
     - Here, [] are optional and <> are required parts of the instruction.
@@ -189,12 +199,24 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
     - **Data Memory Address**: 4 bits (0-15)
     - **Program Memory Address**: 8 bits (0-255)
 
-- Supports three modes:
-    - **Normal mode**: Converts assembly to binary without debug info.
-    - **Debug mode**: Outputs detailed assembly-to-binary conversion steps. (`--debug` flag.)
-    - **Pretty Debug mode**: Outputs human-readable assembly code alongside binary. (`--debug --pretty` flags.)
-    
-    NOTE: pretty flag has to be preceded by debug flag else it will not work.
+- Supports several flags:
+    - **Basic Instruction**: Minimal arguments mandatorily required.
+        ```
+        cargo run -p assembler examples/fact.asm
+        ```
+    - **Debug mode**: Outputs detailed assembly-to-binary conversion steps and creates a debug.txt file containing ASCII representation of the binary.
+        ```
+        cargo run -p assembler examples/fact.asm --debug
+        ```
+    - **Pretty Debug mode**: ASCII representation of the binary in debug.txt is prettified.
+        ```
+        cargo run -p assembler examples/fact.asm --debug --pretty
+        ```
+        **NOTE:** pretty flag should be accompanied by debug flag else it will be ignored.
+    - **Log**: Writes assembly log to a file/console.
+        ```
+        cargo run -p assembler examples/fact.asm --log=file
+        ```
 ---
 
 ## How It Works
@@ -265,11 +287,7 @@ Output from register 0: 120
 End of Execution.
 ```
 
-You can use the `--debug` flag to run the CPU in `debug mode` to visualize the execution of each instruction.
-The complete command would be:
-```bash
-cargo run -p cpu output.bin --debug
-```
+You can use the `--debug` flag as defined in the [CPU section](#cpu) to run the CPU in `debug mode`
 
 ---
 
