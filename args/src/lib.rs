@@ -37,12 +37,6 @@ impl Args {
                 },
             )
             .to_string();
-        if debug {
-            println!("Debug mode enabled.");
-            if pretty {
-                println!("ASCII binary would be prettified.");
-            }
-        }
         Ok(Self {
             input_filename: Some(args[1].clone()),
             debug,

@@ -29,13 +29,16 @@ pub fn main() {
             process::exit(1);
         }
     };
-    let mut cpu = match MyCPU::new(args) {
+    let mut cpu = match MyCPU::new(&args) {
         Ok(cpu) => cpu,
         Err(err) => {
             println!("Failed to create CPU:\n\t{}", err);
             std::process::exit(1);
         }
     };
+    if args.debug {
+        println!("Debug mode enabled.");
+    }
     match cpu.load_binary(&input_filename) {
         Ok(()) => {}
         Err(err) => {

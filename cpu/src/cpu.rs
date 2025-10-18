@@ -40,7 +40,7 @@ pub struct MyCPU {
 }
 
 impl MyCPU {
-    pub fn new(args: Args) -> Result<Self, CPUError> {
+    pub fn new(args: &Args) -> Result<Self, CPUError> {
         Ok(Self {
             program_counter: 0,
             eof: 0,
@@ -50,17 +50,17 @@ impl MyCPU {
             data_memory: Memory::new(256),
             register: Register::new(4),
             logger: Logger::new(
-                if let Some(filename) = args.filename {
+                if let Some(filename) = args.filename.clone() {
                     filename
                 } else {
                     "cpu.txt".to_string()
                 },
-                if let Some(path) = args.path {
+                if let Some(path) = args.path.clone() {
                     path
                 } else {
                     "./logs/".to_string()
                 },
-                if let Some(log_to) = args.log_to {
+                if let Some(log_to) = args.log_to.clone() {
                     if log_to == "file" {
                         LogTo::File
                     } else {

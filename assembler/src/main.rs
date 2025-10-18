@@ -32,13 +32,19 @@ fn main() {
             process::exit(1);
         }
     };
-    let mut assembler = match MyAssembler::new(args) {
+    let mut assembler = match MyAssembler::new(&args) {
         Ok(assembler) => assembler,
         Err(err) => {
             println!("Failed to create assembler:\n\t{}", err);
             process::exit(1);
         }
     };
+    if args.debug {
+        println!("Debug mode enabled.");
+        if args.pretty {
+            println!("ASCII binary would be prettified.");
+        }
+    }
     if let Err(err) = assembler.assemble(&input_filename) {
         println!("Failed to assemble:\n\t{}", err);
         process::exit(1);

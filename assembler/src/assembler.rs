@@ -49,7 +49,7 @@ pub struct MyAssembler {
 }
 
 impl MyAssembler {
-    pub fn new(args: Args) -> Result<Self, AssemblerError> {
+    pub fn new(args: &Args) -> Result<Self, AssemblerError> {
         Ok(Self {
             location_counter: 0,
             symtab: HashMap::new(),
@@ -61,17 +61,17 @@ impl MyAssembler {
             bin_generator: BinGenerator::new(),
             delimiter_table: DelimiterTable::new(),
             logger: Logger::new(
-                if let Some(filename) = args.filename {
+                if let Some(filename) = args.filename.clone() {
                     filename
                 } else {
                     "assembler.txt".to_string()
                 },
-                if let Some(path) = args.path {
+                if let Some(path) = args.path.clone() {
                     path
                 } else {
                     "./logs/".to_string()
                 },
-                if let Some(log_to) = args.log_to {
+                if let Some(log_to) = args.log_to.clone() {
                     if log_to == "file" {
                         LogTo::File
                     } else {
