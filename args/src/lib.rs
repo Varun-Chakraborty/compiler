@@ -28,22 +28,37 @@ impl Args {
         }
         let debug = args.contains(&"--debug".to_string());
         let pretty = args.contains(&"--pretty".to_string());
-        let log = args
+        let log_to = args
             .iter()
             .fold(
-                "",
+                None,
                 |acc, x| {
-                    if x.contains("--log=") { &x[6..] } else { acc }
+                    if x.contains("--log=") { Some(x[6..].to_string()) } else { acc }
                 },
-            )
-            .to_string();
+            );
+        let path = args
+            .iter()
+            .fold(
+                None,
+                |acc, x| {
+                    if x.contains("--path=") { Some(x[7..].to_string()) } else { acc }
+                },
+            );
+        let filename = args
+            .iter()
+            .fold(
+                None,
+                |acc, x| {
+                    if x.contains("--filename=") { Some(x[11..].to_string()) } else { acc }
+                },
+            );
         Ok(Self {
             input_filename: Some(args[1].clone()),
             debug,
             pretty,
-            log_to: Some(log),
-            path: None,
-            filename: None,
+            log_to,
+            path,
+            filename,
         })
     }
 }
