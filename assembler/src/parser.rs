@@ -15,7 +15,7 @@ impl Parser {
         return Self {};
     }
 
-    pub fn parse(&mut self, line: &str) -> Result<Instruction, ParserError> {
+    pub fn parse(&mut self, line: &str) -> Result<Option<Instruction>, ParserError> {
         let instruction = line.split(';').next().ok_or(ParserError::ParseError {
             message: format!(
                 "Unable to parse instruction out of line: {}",
@@ -38,9 +38,13 @@ impl Parser {
         }
         .trim();
 
+        if instruction.is_empty() {
+            return Ok(None);
+        }
+
         if !instruction.contains(' ') {
             parsed_instruction.set_operation_name(instruction.to_string());
-            return Ok(parsed_instruction);
+            return Ok(Some(parsed_instruction));
         }
 
         let (opcode, operands) = instruction
@@ -62,6 +66,6 @@ impl Parser {
             parsed_instruction.add_operand(operand.trim().to_string());
             Ok::<(), ParserError>(())
         })?;
-        Ok(parsed_instruction)
+        Ok(Some(parsed_instruction))
     }
 }

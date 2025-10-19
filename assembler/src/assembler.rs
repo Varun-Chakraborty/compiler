@@ -97,7 +97,10 @@ impl MyAssembler {
         println!("Assembly file: {}", file_name);
         reader.read_to_string(&mut buffer)?;
         for line in buffer.lines() {
-            let instruction = self.parser.parse(line)?;
+            let instruction = match self.parser.parse(line)? {
+                Some(instruction) => instruction,
+                None => continue,
+            };
 
             let instruction = self.semantic_analyzer.analyze(
                 instruction,
@@ -108,6 +111,7 @@ impl MyAssembler {
                 &mut self.writer,
                 &mut self.logger,
             )?;
+
             self.bin_generator.generate_binary(
                 instruction,
                 &mut self.writer,
