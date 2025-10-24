@@ -53,7 +53,7 @@ impl SemanticAnalyzer {
     pub fn pseudo_op(&self, mut instruction: Instruction) -> Result<Instruction, SemanticError> {
         instruction.operands = if let Some(operands) = &instruction.operands {
             match instruction.operation_name.as_str() {
-                "ADD" | "SUB" | "MULT" | "DIV" => {
+                "ADD" | "SUB" | "MULT" | "ADDI" | "SUBI" | "MULTI" | "AND" | "OR" | "XOR" => {
                     if operands.len() == 2 {
                         Some(vec![
                             operands[0].clone(),
@@ -63,7 +63,14 @@ impl SemanticAnalyzer {
                     } else {
                         Some(operands.clone())
                     }
-                }
+                },
+                "NOT" => {
+                    if operands.len() == 1 {
+                        Some(vec![operands[0].clone(), operands[0].clone()])
+                    } else {
+                        Some(operands.clone())
+                    }
+                },
                 _ => Some(operands.clone()),
             }
         } else {

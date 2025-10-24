@@ -8,3 +8,4 @@ isa = { workspace = true }
 thiserror = { workspace = true }
 logger = { workspace = true }
 args = { workspace = true }
+num-traits = "0.2.19"

@@ -1,17 +1,20 @@
+use std::fmt::Debug;
+use num_traits::PrimInt;
+
 #[derive(Debug, thiserror::Error)]
 pub enum MemoryError {
     #[error("Memory address out of bounds")]
     OutOfBounds(),
 }
 
-pub struct Memory {
-    mem: Vec<u8>,
+pub struct Memory<T> {
+    mem: Vec<T>,
 }
 
-impl Memory {
+impl <T: Copy + Default + PrimInt + Debug> Memory <T> {
     pub fn new(size: u32) -> Self {
         return Self {
-            mem: vec![0; size as usize],
+            mem: vec![T::default(); size as usize],
         };
     }
 
@@ -19,7 +22,7 @@ impl Memory {
         return self.mem.len() as u32;
     }
 
-    pub fn set(&mut self, cell: u32, value: u8) -> Result<(), MemoryError> {
+    pub fn set(&mut self, cell: u32, value: T) -> Result<(), MemoryError> {
         if cell > self.mem.len() as u32 - 1 {
             return Err(MemoryError::OutOfBounds());
         }
@@ -27,7 +30,7 @@ impl Memory {
         Ok(())
     }
 
-    pub fn get(&self, cell: u32) -> Result<u8, MemoryError> {
+    pub fn get(&self, cell: u32) -> Result<T, MemoryError> {
         if cell > self.mem.len() as u32 - 1 {
             return Err(MemoryError::OutOfBounds());
         }

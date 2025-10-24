@@ -6,7 +6,7 @@ pub enum RegisterError {
 
 pub struct Register {
     count: u32,
-    regs: Vec<u8>,
+    regs: Vec<i8>,
 }
 
 impl Register {
@@ -17,7 +17,7 @@ impl Register {
         };
     }
 
-    pub fn set(&mut self, register: u32, value: u8) -> Result<(), RegisterError> {
+    pub fn set(&mut self, register: u32, value: i8) -> Result<(), RegisterError> {
         if register > self.count - 1 {
             return Err(RegisterError::InvalidRegister(register));
         }
@@ -25,7 +25,7 @@ impl Register {
         Ok(())
     }
 
-    pub fn get(&self, register: u32) -> Result<u8, RegisterError> {
+    pub fn get(&self, register: u32) -> Result<i8, RegisterError> {
         if register > self.count - 1 {
             return Err(RegisterError::InvalidRegister(register));
         }

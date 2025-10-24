@@ -4,7 +4,7 @@ use crate::register::{Register, RegisterError};
 use args::Args;
 use isa::{OptSpec, OptSpecError};
 use logger::{LogTo, Logger, LoggerError};
-use std::io::{self, Read, Write, stdin, stdout};
+use std::io::{self, Read};
 use std::num::ParseIntError;
 
 #[derive(Debug, thiserror::Error)]
@@ -27,16 +27,23 @@ pub enum CPUError {
     Logger(#[from] LoggerError),
 }
 
+pub struct Flags {
+    pub zero: bool,
+    pub sign: bool,
+    pub overflow: bool,
+    pub carry: bool,
+}
+
 pub struct MyCPU {
-    program_counter: u32,
-    eof: u32,
-    program_memory: Memory,
-    data_memory: Memory,
-    register: Register,
-    zero_flag: bool,
-    debug: bool,
-    opt_spec: OptSpec,
-    logger: Logger,
+    pub program_counter: u32,
+    pub eof: u32,
+    pub program_memory: Memory<u8>,
+    pub data_memory: Memory<i8>,
+    pub register: Register,
+    pub flags: Flags,
+    pub debug: bool,
+    pub opt_spec: OptSpec,
+    pub logger: Logger,
 }
 
 impl MyCPU {
@@ -45,10 +52,17 @@ impl MyCPU {
             program_counter: 0,
             eof: 0,
             opt_spec: OptSpec::clone(),
-            zero_flag: false,
+            flags: Flags {
+                zero: false,
+                sign: false,
+                overflow: false,
+                carry: false,
+            },
             program_memory: Memory::new(256),
             data_memory: Memory::new(256),
             register: Register::new(4),
+            stack: Vec::new(),
+            stack_pointer: 0,
             logger: Logger::new(
                 if let Some(filename) = args.filename.clone() {
                     filename
@@ -74,107 +88,6 @@ impl MyCPU {
         })
     }
 
-    pub fn mover(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        // move to register
-        let register = operands[0];
-        let memory = operands[1];
-        let value = self.data_memory.get(memory)?;
-        self.zero_flag = value == 0;
-        self.register.set(register, value)?;
-        Ok(())
-    }
-
-    pub fn movem(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        // move from register
-        let register = operands[0];
-        let memory = operands[1];
-        let value = self.register.get(register)?;
-        self.zero_flag = value == 0;
-        self.data_memory.set(memory, value)?;
-        Ok(())
-    }
-
-    pub fn add(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        let dest = operands[0];
-        let source = operands[1];
-        let memory = operands[2];
-        let sum = self.register.get(source)? + self.data_memory.get(memory)?;
-        self.zero_flag = sum == 0;
-        self.register.set(dest, sum)?;
-        Ok(())
-    }
-
-    pub fn sub(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        let dest = operands[0];
-        let source = operands[1];
-        let memory = operands[2];
-        let diff = self.register.get(source)? - self.data_memory.get(memory)?;
-        self.zero_flag = diff == 0;
-        self.register.set(dest, diff)?;
-        Ok(())
-    }
-
-    pub fn halt(&mut self, _: &[u32]) {
-        self.program_counter = self.eof;
-    }
-
-    pub fn input(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        let register = operands[0];
-        let mut input = String::new();
-        print!("Enter value for register {register}: ");
-        stdout().flush()?;
-        stdin().read_line(&mut input)?;
-        let input = input.trim().parse()?;
-        self.zero_flag = input == 0;
-        self.register.set(register, input)?;
-        Ok(())
-    }
-
-    pub fn output(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        let register = operands[0];
-        let value = self.register.get(register)?;
-        self.zero_flag = value == 0;
-        println!("Output from register {register}: {value}");
-        stdout().flush()?;
-        Ok(())
-    }
-
-    pub fn jmp(&mut self, operands: &[u32]) {
-        let address = operands[0];
-        self.program_counter = address;
-    }
-
-    pub fn jz(&mut self, operands: &[u32]) {
-        let address = operands[0];
-        if self.zero_flag {
-            self.program_counter = address;
-        }
-    }
-
-    pub fn jnz(&mut self, operands: &[u32]) {
-        let address = operands[0];
-        if !self.zero_flag {
-            self.program_counter = address;
-        }
-    }
-
-    pub fn mult(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        let dest = operands[0];
-        let source = operands[1];
-        let memory = operands[2];
-        let product = self.register.get(source)? * self.data_memory.get(memory)?;
-        self.zero_flag = product == 0;
-        self.register.set(dest, product)?;
-        Ok(())
-    }
-
-    pub fn dc(&mut self, operands: &[u32]) -> Result<(), CPUError> {
-        self.data_memory.set(operands[0], operands[1] as u8)?;
-        self.eof += 1;
-        self.zero_flag = operands[1] == 0;
-        Ok(())
-    }
-
     pub fn execute(
         &mut self,
         instruction: Instruction,
@@ -189,19 +102,41 @@ impl MyCPU {
             ))?;
         }
         let operation_name = &self.opt_spec.get_by_opcode(&opcode)?.operation_name;
+
+        // implementation of each operation are present in ./handler.rs
         match operation_name.to_lowercase().as_str() {
-            "mover" => Ok(self.mover(operands)?),
-            "movem" => Ok(self.movem(operands)?),
-            "add" => Ok(self.add(operands)?),
-            "sub" => Ok(self.sub(operands)?),
             "halt" => Ok(self.halt(operands)),
             "in" => Ok(self.input(operands)?),
             "out" => Ok(self.output(operands)?),
+            "mover" => Ok(self.mover(operands, false)?),
+            "moveri" => Ok(self.mover(operands, true)?),
+            "movem" => Ok(self.movem(operands)?),
+            "movemi" => Ok(self.movemi(operands)?),
+            "add" => Ok(self.add(operands, false)?),
+            "addi" => Ok(self.add(operands, true)?),
+            "sub" => Ok(self.sub(operands, false)?),
+            "subi" => Ok(self.sub(operands, true)?),
+            "mult" => Ok(self.mult(operands, false)?),
+            "multi" => Ok(self.mult(operands, true)?),
             "jmp" => Ok(self.jmp(operands)),
             "jz" => Ok(self.jz(operands)),
             "jnz" => Ok(self.jnz(operands)),
-            "mult" => Ok(self.mult(operands)?),
-            "dc" => Ok(self.dc(operands)?),
+            "and" => Ok(self.and(operands)?),
+            "or" => Ok(self.or(operands)?),
+            "xor" => Ok(self.xor(operands)?),
+            "not" => Ok(self.not(operands)?),
+            "shl" => Ok(self.shl(operands)?),
+            "shr" => Ok(self.shr(operands)?),
+            "cmp" => Ok(self.cmp(operands, false)?),
+            "cmpi" => Ok(self.cmp(operands, true)?),
+            "push" => Ok(self.push(operands)?),
+            "pop" => Ok(self.pop(operands)?),
+            "call" => Ok(self.call(operands)?),
+            "ret" => Ok(self.ret(operands)?),
+            "je" => Ok(self.je(operands)),
+            "jne" => Ok(self.jne(operands)),
+            "jg" => Ok(self.jg(operands)),
+            "jl" => Ok(self.jl(operands)),
             _ => Err(CPUError::NoImplementation(operation_name.to_string())),
         }
     }

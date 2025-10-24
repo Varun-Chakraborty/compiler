@@ -16,7 +16,7 @@ pub struct Instruction {
     operands: Vec<u32>,
 }
 
-fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, InstructionError> {
+fn get_bits(memory: &Memory<u8>, mut start: u32, bits_count: u32) -> Result<u32, InstructionError> {
     let mut value: u32 = 0;
     for _ in 0..bits_count {
         let byte = memory.get(start / 8)?;
@@ -29,7 +29,7 @@ fn get_bits(memory: &Memory, mut start: u32, bits_count: u32) -> Result<u32, Ins
 
 impl Instruction {
     pub fn new(
-        memory: &Memory,
+        memory: &Memory<u8>,
         pc: &mut u32,
         optspec: &isa::OptSpec,
     ) -> Result<Self, InstructionError> {
