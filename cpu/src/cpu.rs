@@ -38,12 +38,13 @@ pub struct MyCPU {
     pub program_counter: u32,
     pub eof: u32,
     pub program_memory: Memory<u8>,
-    pub data_memory: Memory<i8>,
-    pub register: Register,
+    pub data_memory: Memory<u8>,
+    pub register: Register<u8>,
     pub flags: Flags,
     pub debug: bool,
     pub opt_spec: OptSpec,
     pub logger: Logger,
+    pub stack_pointer: u32,
 }
 
 impl MyCPU {
@@ -61,8 +62,7 @@ impl MyCPU {
             program_memory: Memory::new(256),
             data_memory: Memory::new(256),
             register: Register::new(4),
-            stack: Vec::new(),
-            stack_pointer: 0,
+            stack_pointer: 256,
             logger: Logger::new(
                 if let Some(filename) = args.filename.clone() {
                     filename

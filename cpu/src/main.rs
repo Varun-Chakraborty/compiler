@@ -1,8 +1,8 @@
 mod cpu;
+mod handler;
 mod instruction;
 mod memory;
 mod register;
-mod handler;
 
 use crate::cpu::MyCPU;
 use args::Args;

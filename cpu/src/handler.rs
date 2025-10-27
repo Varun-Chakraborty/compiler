@@ -29,7 +29,7 @@ impl MyCPU {
     pub fn mover(&mut self, operands: &[u32], immediate: bool) -> Result<(), CPUError> {
         let register = operands[0];
         let value = if immediate {
-            operands[1] as i8
+            operands[1] as u8
         } else {
             self.data_memory.get(operands[1])?
         };
@@ -49,8 +49,8 @@ impl MyCPU {
     // move immediate value to memory
     pub fn movemi(&mut self, operands: &[u32]) -> Result<(), CPUError> {
         let memory = operands[0];
-        let value = operands[1];
-        self.data_memory.set(memory, value as i8)?;
+        let value = operands[1] as u8;
+        self.data_memory.set(memory, value)?;
         Ok(())
     }
 
@@ -58,7 +58,7 @@ impl MyCPU {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = if immediate {
-            operands[2] as i8
+            operands[2] as u8
         } else {
             self.data_memory.get(operands[2])?
         };
@@ -73,44 +73,44 @@ impl MyCPU {
 
     pub fn sub(&mut self, operands: &[u32], immediate: bool) -> Result<(), CPUError> {
         let dest = operands[0];
-        let num1 = self.register.get(operands[1])?;
+        let num1 = self.register.get(operands[1])? as i8;
         let num2 = if immediate {
             operands[2] as i8
         } else {
-            self.data_memory.get(operands[2])?
+            self.data_memory.get(operands[2])? as i8
         };
         let (diff, carry) = num1.overflowing_sub(num2);
         self.flags.sign = (diff & (1 << 7)) != 0;
         self.flags.zero = diff == 0;
         self.flags.carry = carry;
         self.flags.overflow = ((num1 ^ num2) & (num1 ^ diff)) & (1 << 7) != 0;
-        self.register.set(dest, diff)?;
+        self.register.set(dest, diff as u8)?;
         Ok(())
     }
 
     pub fn mult(&mut self, operands: &[u32], immediate: bool) -> Result<(), CPUError> {
         let dest = operands[0];
-        let num1 = self.register.get(operands[1])?;
+        let num1 = self.register.get(operands[1])? as i8;
         let num2 = if immediate {
             operands[2] as i8
         } else {
-            self.data_memory.get(operands[2])?
+            self.data_memory.get(operands[2])? as i8
         };
         let (product, carry) = num1.overflowing_mul(num2);
         self.flags.sign = (product & (1 << 7)) != 0;
         self.flags.zero = product == 0;
         self.flags.carry = carry;
         self.flags.overflow = carry;
-        self.register.set(dest, product)?;
+        self.register.set(dest, product as u8)?;
         Ok(())
     }
 
     pub fn cmp(&mut self, operands: &[u32], immediate: bool) -> Result<(), CPUError> {
-        let num1 = self.register.get(operands[0])?;
+        let num1 = self.register.get(operands[0])? as i8;
         let num2 = if immediate {
             operands[2] as i8
         } else {
-            self.data_memory.get(operands[1])?
+            self.data_memory.get(operands[1])? as i8
         };
         let (diff, carry) = num1.overflowing_sub(num2);
         self.flags.sign = (diff & (1 << 7)) != 0;
@@ -194,23 +194,61 @@ impl MyCPU {
         let reg = operands[0];
         let value = self.register.get(reg)?;
         self.flags.carry = (value & (1 << 7)) != 0;
-        let value = value << 1;
-        self.flags.zero = value == 0;
-        self.flags.sign = value < 0;
-        self.flags.overflow = false;
+        let shifted_value = value << 1;
+        self.flags.zero = shifted_value == 0;
+        self.flags.sign = (shifted_value & (1 << 7)) != 0;
+        self.flags.overflow = ((shifted_value ^ value) & (1 << 7)) != 0;
         self.register.set(operands[0], value)?;
         Ok(())
     }
 
     pub fn shr(&mut self, operands: &[u32]) -> Result<(), CPUError> {
         let reg = operands[0];
-        let value = self.register.get(reg)?;
+        let value = self.register.get(reg)? as i8;
         self.flags.carry = (value & 1) != 0;
         let value = value >> 1;
         self.flags.zero = value == 0;
         self.flags.sign = (value & (1 << 7)) != 0;
         self.flags.overflow = false;
-        self.register.set(operands[0], value)?;
+        self.register.set(operands[0], value as u8)?;
         Ok(())
     }
+
+    pub fn push(&mut self, operands: &[u32]) -> Result<(), CPUError> {
+        let reg = operands[0];
+        let value = self.register.get(reg)?;
+        self.stack_pointer -= 1;
+        self.data_memory.set(self.stack_pointer, value)?;
+        Ok(())
+    }
+
+    pub fn pop(&mut self, operands: &[u32]) -> Result<(), CPUError> {
+        let reg = operands[0];
+        let value = self.data_memory.get(self.stack_pointer)?;
+        self.stack_pointer += 1;
+        self.register.set(reg, value)?;
+        Ok(())
+    }
+
+    pub fn call(&mut self, operands: &[u32]) -> Result<(), CPUError> {
+        self.stack_pointer -= 1;
+        self.data_memory
+            .set(self.stack_pointer, self.program_counter as u8)?;
+        self.program_counter = operands[0];
+        Ok(())
+    }
+
+    pub fn ret(&mut self, _: &[u32]) -> Result<(), CPUError> {
+        self.program_counter = self.data_memory.get(self.stack_pointer)? as u32;
+        self.stack_pointer += 1;
+        Ok(())
+    }
+
+    pub fn je(&mut self, _operands: &[u32]) {}
+
+    pub fn jne(&mut self, _operands: &[u32]) {}
+
+    pub fn jg(&mut self, _operands: &[u32]) {}
+
+    pub fn jl(&mut self, _operands: &[u32]) {}
 }

@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use num_traits::PrimInt;
+use std::fmt::Debug;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MemoryError {
@@ -11,7 +11,7 @@ pub struct Memory<T> {
     mem: Vec<T>,
 }
 
-impl <T: Copy + Default + PrimInt + Debug> Memory <T> {
+impl<T: Copy + Default + PrimInt + Debug> Memory<T> {
     pub fn new(size: u32) -> Self {
         return Self {
             mem: vec![T::default(); size as usize],

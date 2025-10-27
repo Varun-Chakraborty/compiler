@@ -1,0 +1,2 @@
+MOVERI R0, 720
+OUT R0

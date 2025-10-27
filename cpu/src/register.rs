@@ -1,23 +1,27 @@
+use std::fmt::Debug;
+
+use num_traits::PrimInt;
+
 #[derive(Debug, thiserror::Error)]
 pub enum RegisterError {
     #[error("Invalid register {0}")]
     InvalidRegister(u32),
 }
 
-pub struct Register {
+pub struct Register<T> {
     count: u32,
-    regs: Vec<i8>,
+    regs: Vec<T>,
 }
 
-impl Register {
+impl<T: Copy + Default + PrimInt + Debug> Register<T> {
     pub fn new(count: u32) -> Self {
         return Self {
             count,
-            regs: vec![0; count as usize],
+            regs: vec![T::default(); count as usize],
         };
     }
 
-    pub fn set(&mut self, register: u32, value: i8) -> Result<(), RegisterError> {
+    pub fn set(&mut self, register: u32, value: T) -> Result<(), RegisterError> {
         if register > self.count - 1 {
             return Err(RegisterError::InvalidRegister(register));
         }
@@ -25,7 +29,7 @@ impl Register {
         Ok(())
     }
 
-    pub fn get(&self, register: u32) -> Result<i8, RegisterError> {
+    pub fn get(&self, register: u32) -> Result<T, RegisterError> {
         if register > self.count - 1 {
             return Err(RegisterError::InvalidRegister(register));
         }

@@ -15,7 +15,7 @@ pub enum SemanticError {
     RegexCompilation(#[from] regex::Error),
     #[error("Operand {0} does not match regex {1}")]
     RegexMismatch(String, String),
-    #[error("Unable to parse the token: {0}")]
+    #[error("Unable to parse the token as an integer: {0}")]
     ParseInt(String),
     #[error("Label {0} already in use")]
     LabelAlreadyInUse(String),
@@ -63,14 +63,14 @@ impl SemanticAnalyzer {
                     } else {
                         Some(operands.clone())
                     }
-                },
+                }
                 "NOT" => {
                     if operands.len() == 1 {
                         Some(vec![operands[0].clone(), operands[0].clone()])
                     } else {
                         Some(operands.clone())
                     }
-                },
+                }
                 _ => Some(operands.clone()),
             }
         } else {
@@ -119,11 +119,28 @@ impl SemanticAnalyzer {
 
         let instruction = self.pseudo_op(instruction)?;
 
+        if let Some(label) = instruction.label {
+            if label.is_empty() {
+                return Err(SemanticError::LabelHasNoName(line));
+            } else {
+                match symtab.contains_key(&label) {
+                    true => {
+                        return Err(SemanticError::LabelAlreadyInUse(label.to_string()));
+                    }
+                    false => {
+                        symtab.insert(label.to_string(), *location_counter);
+                    }
+                };
+                self.patch(label, writer, tii, location_counter, logger)?;
+            }
+        }
+
         let operation = self
             .optspec
             .get_by_operation_name(&instruction.operation_name)?;
 
         let opcode = operation.opcode;
+        let mut location_counter = *location_counter + self.optspec.opcode_bit_count as u32;
 
         let expected_operands = operation.operands.clone();
 
@@ -155,22 +172,6 @@ impl SemanticAnalyzer {
             }
         };
 
-        if let Some(label) = instruction.label {
-            if label.is_empty() {
-                return Err(SemanticError::LabelHasNoName(line));
-            } else {
-                match symtab.contains_key(&label) {
-                    true => {
-                        return Err(SemanticError::LabelAlreadyInUse(label.to_string()));
-                    }
-                    false => {
-                        symtab.insert(label.to_string(), *location_counter);
-                    }
-                };
-                self.patch(label, writer, tii, location_counter, logger)?;
-            }
-        }
-
         // zip operand and the corresponding operand spec
         let operands: Result<Vec<InstructionField>, SemanticError> = expected_operands
             .iter()
@@ -185,32 +186,31 @@ impl SemanticAnalyzer {
                 }
 
                 // parse data
-                if token.starts_with("R") {
+                if token.starts_with("R") && token.len() == 2 {
                     let value = token[1..]
                         .parse()
                         .map_err(|_| SemanticError::ParseInt(token.clone()))?;
-                    Ok(InstructionField {
-                        value,
-                        bit_count: spec.bit_count,
-                    })
+                    let bit_count = spec.bit_count;
+                    location_counter += bit_count as u32;
+                    Ok(InstructionField { value, bit_count })
                 } else if token.chars().all(char::is_numeric) {
                     let value = token
                         .parse::<u32>()
                         .map_err(|_| SemanticError::ParseInt(token.clone()))?;
-                    Ok(InstructionField {
-                        value,
-                        bit_count: spec.bit_count,
-                    })
+                    let bit_count = spec.bit_count;
+                    location_counter += bit_count as u32;
+                    Ok(InstructionField { value, bit_count })
                 } else {
                     if let Some(location) = symtab.get(token) {
+                        let bit_count = spec.bit_count;
+                        location_counter += bit_count as u32;
+
                         Ok(InstructionField {
                             value: *location,
                             bit_count: spec.bit_count,
                         })
                     } else {
-                        tii.entry(token.clone())
-                            .or_default()
-                            .push(*location_counter);
+                        tii.entry(token.clone()).or_default().push(location_counter);
                         Ok(InstructionField {
                             value: 0,
                             bit_count: spec.bit_count,
