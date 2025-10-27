@@ -88,66 +88,211 @@ Symbol table mapping for opcodes:
             <th>Opcode</th>
             <th>Mnemonic</th>
             <th>Expected Count of Arguments</th>
+            <th>Description</th>
         </tr>
         <tr>
-            <td>0000</td>
+            <td>0</td>
             <td>HALT</td>
             <td>0</td>
+            <td>Halts the CPU.</td>
         </tr>
         <tr>
-            <td>0001</td>
+            <td>1</td>
             <td>MOVER</td>
             <td>2 (R, M)</td>
+            <td>Moves data from memory to a register.</td>
         </tr>
         <tr>
-            <td>0010</td>
+            <td>2</td>
+            <td>MOVERI</td>
+            <td>2 (R, V)</td>
+            <td>Moves a constant (immediate value) to a register.</td>
+        </tr>
+        <tr>
+            <td>3</td>
             <td>MOVEM</td>
             <td>2 (R, M)</td>
+            <td>Moves data from a register to memory.</td>
         </tr>
         <tr>
-            <td>0011</td>
+            <td>4</td>
+            <td>MOVEMI</td>
+            <td>2 (M, V)</td>
+            <td>Moves a constant (immediate value) to memory.</td>
+        </tr>
+        <tr>
+            <td>5</td>
             <td>IN</td>
             <td>1 (R)</td>
+            <td>Reads data from the user.</td>
         </tr>
         <tr>
-            <td>0100</td>
+            <td>6</td>
             <td>OUT</td>
             <td>1 (R)</td>
+            <td>Writes data to the user.</td>
         </tr>
         <tr>
-            <td>0101</td>
+            <td>7</td>
             <td>ADD</td>
-            <td>3 (R, R, M) or 2 (R, M)</td>
+            <td>3 (R, R, M)</td>
+            <td>Adds register and memory and stores the result in a register specified in the first operand.</td>
         </tr>
         <tr>
-            <td>0110</td>
+            <td>8</td>
+            <td>ADDI</td>
+            <td>3 (R, R, V)</td>
+            <td>Adds a register and a constant (immediate value) and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>10</td>
             <td>SUB</td>
-            <td>3 (R, R, M) or 2 (R, M)</td>
+            <td>3 (R, R, M)</td>
+            <td>Subtracts memory from a register and stores the result in a register specified in the first operand.</td>
         </tr>
         <tr>
-            <td>0111</td>
+            <td>11</td>
+            <td>SUBI</td>
+            <td>3 (R, R, V)</td>
+            <td>Subtracts a constant (immediate value) from a register and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>12</td>
             <td>MULT</td>
-            <td>3 (R, R, M) or 2 (R, M)</td>
+            <td>3 (R, R, M)</td>
+            <td>Multiples register and memory and stores the result in a register specified in the first operand.</td>
         </tr>
         <tr>
-            <td>1000</td>
+            <td>13</td>
+            <td>MULTI</td>
+            <td>3 (R, R, V)</td>
+            <td>Multiples a register and a constant (immediate value) and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>14</td>
+            <td>DIV</td>
+            <td>3 (R, R, M)</td>
+            <td>Divides memory from a register and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>15</td>
+            <td>DIVI</td>
+            <td>3 (R, R, V)</td>
+            <td>Divides a constant (immediate value) from a register and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>16</td>
+            <td>MOD</td>
+            <td>3 (R, R, M)</td>
+            <td>Divides memory from a register and stores the remainder in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>17</td>
+            <td>MODI</td>
+            <td>3 (R, R, V)</td>
+            <td>Divides a constant (immediate value) from a register and stores the remainder in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>18</td>
             <td>JMP</td>
             <td>1 (M)</td>
+            <td>Jump to a memory address.</td>
         </tr>
         <tr>
-            <td>1001</td>
+            <td>19</td>
             <td>JZ</td>
             <td>1 (M)</td>
+            <td>Jump to a memory address if the zero flag is set.</td>
         </tr>
         <tr>
-            <td>1010</td>
+            <td>20</td>
             <td>JNZ</td>
             <td>1 (M)</td>
+            <td>Jump to a memory address if the zero flag is not set.</td>
         </tr>
         <tr>
-            <td>1011</td>
-            <td>DC</td>
-            <td>2 (M, V)</td>
+            <td>21</td>
+            <td>AND</td>
+            <td>3 (R, R, M)</td>
+            <td>ANDs register and memory and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>22</td>
+            <td>OR</td>
+            <td>3 (R, R, M)</td>
+            <td>ORs register and memory and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>23</td>
+            <td>XOR</td>
+            <td>3 (R, R, M)</td>
+            <td>XORs register and memory and stores the result in a register specified in the first operand.</td>
+        </tr>
+        <tr>
+            <td>24</td>
+            <td>NOT</td>
+            <td>1 (R)</td>
+            <td>NOTs a register and stores the result in the same register.</td>
+        </tr>
+        <tr>
+            <td>25</td>
+            <td>SHL</td>
+            <td>1 (R)</td>
+            <td>Shifts a register left by 1 bit and stores the result in the same register.</td>
+        </tr>
+        <tr>
+            <td>26</td>
+            <td>SHR</td>
+            <td>1 (R)</td>
+            <td>Shifts a register right by 1 bit and stores the result in the same register.</td>
+        </tr>
+        <tr>
+            <td>27</td>
+            <td>ROL</td>
+            <td>1 (R)</td>
+            <td>Rotates a register left by 1 bit and stores the result in the same register.</td>
+        </tr>
+        <tr>
+            <td>28</td>
+            <td>ROR</td>
+            <td>1 (R)</td>
+            <td>Rotates a register right by 1 bit and stores the result in the same register.</td>
+        </tr>
+        <tr>
+            <td>29</td>
+            <td>CMP</td>
+            <td>2 (R, R)</td>
+            <td>Compares two registers and sets flags.</td>
+        </tr>
+        <tr>
+            <td>30</td>
+            <td>CMPI</td>
+            <td>2 (R, V)</td>
+            <td>Compares a register with a constant (immediate value) and sets flags.</td>
+        </tr>
+        <tr>
+            <td>31</td>
+            <td>PUSH</td>
+            <td>1 (R)</td>
+            <td>Pushes a register onto the stack.</td>
+        </tr>
+        <tr>
+            <td>32</td>
+            <td>POP</td>
+            <td>1 (R)</td>
+            <td>Pops a register from the stack.</td>
+        </tr>
+        <tr>
+            <td>33</td>
+            <td>CALL</td>
+            <td>1 (M)</td>
+            <td>Pushes the program counter onto the stack and jumps to a memory address.</td>
+        </tr>
+        <tr>
+            <td>34</td>
+            <td>RET</td>
+            <td>0</td>
+            <td>Pops the program counter from the stack and jumps to it.</td>
         </tr>
     </table>
 
