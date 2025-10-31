@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use isa::{OptSpec, OptSpecError};
+use isa::{OperandType, OptSpec, OptSpecError};
 use logger::{Logger, LoggerError};
 use regex::Regex;
 
@@ -13,10 +13,17 @@ use crate::{
 pub enum SemanticError {
     #[error("Regex Compilation error: {0}")]
     RegexCompilation(#[from] regex::Error),
-    #[error("Operand {0} does not match regex {1}")]
-    RegexMismatch(String, String),
+    #[error("Operand {operand} does not match the operand type: {operand_type} which looks like {operand_regex} at line: {line}")]
+    OperandDoesNotMatch {
+        operand: String,
+        operand_type: OperandType,
+        operand_regex: String,
+        line: String,
+    },
     #[error("Unable to parse the token as an integer: {0}")]
     ParseInt(String),
+    #[error("Unable to parse the token as a signed 8 bit integer: {0}")]
+    NotI8(String),
     #[error("Label {0} already in use")]
     LabelAlreadyInUse(String),
     #[error("Too many operands at line: {0}, expected: {1}, got: {2}")]
@@ -52,31 +59,34 @@ impl SemanticAnalyzer {
 
     pub fn pseudo_op(&self, mut instruction: Instruction) -> Result<Instruction, SemanticError> {
         instruction.operands = if let Some(operands) = &instruction.operands {
-            match instruction.operation_name.as_str() {
-                "ADD" | "SUB" | "MULT" | "ADDI" | "SUBI" | "MULTI" | "AND" | "OR" | "XOR" => {
-                    if operands.len() == 2 {
-                        Some(vec![
-                            operands[0].clone(),
-                            operands[0].clone(),
-                            operands[1].clone(),
-                        ])
-                    } else {
-                        Some(operands.clone())
+            match &instruction.operation_name {
+                Some(operation_name) => match operation_name.as_str() {
+                    "ADD" | "ADDI" | "ADC" | "ADCI" | "SUB" | "SUBI" | "SBC" | "SBCI" | "MULT"
+                    | "MULTI" | "AND" | "OR" | "XOR" => {
+                        if operands.len() == 2 {
+                            Some(vec![
+                                operands[0].clone(),
+                                operands[0].clone(),
+                                operands[1].clone(),
+                            ])
+                        } else {
+                            Some(operands.clone())
+                        }
                     }
-                }
-                "NOT" => {
-                    if operands.len() == 1 {
-                        Some(vec![operands[0].clone(), operands[0].clone()])
-                    } else {
-                        Some(operands.clone())
+                    "NOT" => {
+                        if operands.len() == 1 {
+                            Some(vec![operands[0].clone(), operands[0].clone()])
+                        } else {
+                            Some(operands.clone())
+                        }
                     }
-                }
-                _ => Some(operands.clone()),
+                    _ => Some(operands.clone()),
+                },
+                None => Some(operands.clone()),
             }
         } else {
             None
         };
-        instruction.set_operation_name(instruction.operation_name.clone());
         Ok(instruction)
     }
 
@@ -112,9 +122,9 @@ impl SemanticAnalyzer {
         location_counter: &mut u32,
         writer: &mut Writer,
         logger: &mut Logger,
-    ) -> Result<SemanticallyParsedInstruction, SemanticError> {
+    ) -> Result<Option<SemanticallyParsedInstruction>, SemanticError> {
         if self.debug {
-            Instruction::print_instruction(&instruction, None, logger)?;
+            Instruction::print_instruction(&instruction, logger)?;
         }
 
         let instruction = self.pseudo_op(instruction)?;
@@ -135,9 +145,10 @@ impl SemanticAnalyzer {
             }
         }
 
-        let operation = self
-            .optspec
-            .get_by_operation_name(&instruction.operation_name)?;
+        let operation = match &instruction.operation_name {
+            Some(operation_name) => self.optspec.get_by_operation_name(operation_name)?,
+            None => return Ok(None),
+        };
 
         let opcode = operation.opcode;
         let mut location_counter = *location_counter + self.optspec.opcode_bit_count as u32;
@@ -178,43 +189,82 @@ impl SemanticAnalyzer {
             .zip(operands.iter())
             .map(|(spec, token)| {
                 let re = Regex::new(spec.operand_regex.as_str())?;
-                if !re.is_match(&token) {
-                    return Err(SemanticError::RegexMismatch(
-                        token.clone(),
-                        spec.operand_regex.to_string(),
-                    ));
-                }
-
+                
                 // parse data
-                if token.starts_with("R") && token.len() == 2 {
-                    let value = token[1..]
-                        .parse()
-                        .map_err(|_| SemanticError::ParseInt(token.clone()))?;
-                    let bit_count = spec.bit_count;
-                    location_counter += bit_count as u32;
-                    Ok(InstructionField { value, bit_count })
-                } else if token.chars().all(char::is_numeric) {
-                    let value = token
-                        .parse::<u32>()
-                        .map_err(|_| SemanticError::ParseInt(token.clone()))?;
-                    let bit_count = spec.bit_count;
-                    location_counter += bit_count as u32;
-                    Ok(InstructionField { value, bit_count })
-                } else {
-                    if let Some(location) = symtab.get(token) {
+                match spec.operand_type {
+                    OperandType::Register => {
+                        if !re.is_match(&token) {
+                            return Err(SemanticError::OperandDoesNotMatch {
+                                operand: token.clone(),
+                                operand_type: OperandType::Register,
+                                operand_regex: spec.operand_regex.to_string(),
+                                line: line.clone(),
+                            });
+                        }
+                        let value = token[1..]
+                            .parse()
+                            .map_err(|_| SemanticError::ParseInt(token.clone()))?;
                         let bit_count = spec.bit_count;
                         location_counter += bit_count as u32;
+                        Ok(InstructionField { value, bit_count })
+                    }
+                    OperandType::Constant => {
+                        if !re.is_match(&token) {
+                            return Err(SemanticError::OperandDoesNotMatch {
+                                operand: token.clone(),
+                                operand_type: OperandType::Constant,
+                                operand_regex: spec.operand_regex.to_string(),
+                                line: line.clone(),
+                            });
+                        }
+                        let value = token
+                            .parse::<i8>()
+                            .map_err(|_| SemanticError::NotI8(token.clone()))?
+                            as u8 as u32;
+                        let bit_count = spec.bit_count;
+                        location_counter += bit_count as u32;
+                        Ok(InstructionField { value, bit_count })
+                    }
+                    OperandType::Memory => {
+                        if !re.is_match(&token) {
+                            return Err(SemanticError::OperandDoesNotMatch {
+                                operand: token.clone(),
+                                operand_type: OperandType::Memory,
+                                operand_regex: spec.operand_regex.to_string(),
+                                line: line.clone(),
+                            });
+                        }
+                        let value = token
+                            .parse::<u32>()
+                            .map_err(|_| SemanticError::ParseInt(token.clone()))?;
+                        let bit_count = spec.bit_count;
+                        location_counter += bit_count as u32;
+                        Ok(InstructionField { value, bit_count })
+                    }
+                    OperandType::Label => {
+                        if !re.is_match(&token) {
+                            return Err(SemanticError::OperandDoesNotMatch {
+                                operand: token.clone(),
+                                operand_type: OperandType::Label,
+                                operand_regex: spec.operand_regex.to_string(),
+                                line: line.clone(),
+                            });
+                        }
+                        if let Some(location) = symtab.get(token) {
+                            let bit_count = spec.bit_count;
+                            location_counter += bit_count as u32;
 
-                        Ok(InstructionField {
-                            value: *location,
-                            bit_count: spec.bit_count,
-                        })
-                    } else {
-                        tii.entry(token.clone()).or_default().push(location_counter);
-                        Ok(InstructionField {
-                            value: 0,
-                            bit_count: spec.bit_count,
-                        })
+                            Ok(InstructionField {
+                                value: *location,
+                                bit_count: spec.bit_count,
+                            })
+                        } else {
+                            tii.entry(token.clone()).or_default().push(location_counter);
+                            Ok(InstructionField {
+                                value: 0,
+                                bit_count: spec.bit_count,
+                            })
+                        }
                     }
                 }
             })
@@ -222,12 +272,12 @@ impl SemanticAnalyzer {
 
         let operands = operands?;
 
-        Ok(SemanticallyParsedInstruction {
+        Ok(Some(SemanticallyParsedInstruction {
             opcode: InstructionField {
                 value: opcode,
                 bit_count: self.optspec.opcode_bit_count,
             },
             operands: Some(operands),
-        })
+        }))
     }
 }

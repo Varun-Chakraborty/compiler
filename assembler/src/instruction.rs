@@ -3,7 +3,7 @@ use logger::{Logger, LoggerError};
 #[derive(Debug)]
 pub struct Instruction {
     pub label: Option<String>,
-    pub operation_name: String,
+    pub operation_name: Option<String>,
     pub operands: Option<Vec<String>>,
 }
 
@@ -11,7 +11,7 @@ impl Instruction {
     pub fn new() -> Self {
         Self {
             label: None,
-            operation_name: String::new(),
+            operation_name: None,
             operands: None,
         }
     }
@@ -21,7 +21,7 @@ impl Instruction {
     }
 
     pub fn set_operation_name(&mut self, operation_name: String) {
-        self.operation_name = operation_name;
+        self.operation_name = Some(operation_name);
     }
 
     pub fn add_operand(&mut self, operand: String) {
@@ -34,19 +34,9 @@ impl Instruction {
 
     pub fn print_instruction(
         instruction: &Instruction,
-        opcode: Option<u32>,
         logger: &mut Logger,
     ) -> Result<(), LoggerError> {
-        if let Some(opcode) = opcode {
-            logger.log(format!(
-                "Instruction: Operation_name = {}, Opcode = {}, Operands = {:?}",
-                instruction.operation_name, opcode, instruction.operands
-            ))?;
-        }
-        logger.log(format!(
-            "Instruction: Operation_name = {}, Operands = {:?}",
-            instruction.operation_name, instruction.operands
-        ))?;
+        logger.log(format!("Instruction: {instruction:?}"))?;
         Ok(())
     }
 }

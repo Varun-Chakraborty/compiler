@@ -108,16 +108,23 @@ impl MyCPU {
             "halt" => Ok(self.halt(operands)),
             "in" => Ok(self.input(operands)?),
             "out" => Ok(self.output(operands)?),
+            "out_16" => Ok(self.output_16(operands)?),
+            "out_char" => Ok(self.output_char(operands)?),
             "mover" => Ok(self.mover(operands, false)?),
-            "moveri" => Ok(self.mover(operands, true)?),
+            "movei" => Ok(self.mover(operands, true)?),
             "movem" => Ok(self.movem(operands)?),
-            "movemi" => Ok(self.movemi(operands)?),
             "add" => Ok(self.add(operands, false)?),
             "addi" => Ok(self.add(operands, true)?),
+            "adc" => Ok(self.adc(operands, false)?),
+            "adci" => Ok(self.adc(operands, true)?),
             "sub" => Ok(self.sub(operands, false)?),
             "subi" => Ok(self.sub(operands, true)?),
+            "sbc" => Ok(self.sbc(operands, false)?),
+            "sbci" => Ok(self.sbc(operands, true)?),
             "mult" => Ok(self.mult(operands, false)?),
+            "mult_16" => Ok(self.mult_16(operands, false)?),
             "multi" => Ok(self.mult(operands, true)?),
+            "mult_16i" => Ok(self.mult_16(operands, true)?),
             "jmp" => Ok(self.jmp(operands)),
             "jz" => Ok(self.jz(operands)),
             "jnz" => Ok(self.jnz(operands)),
@@ -133,9 +140,7 @@ impl MyCPU {
             "pop" => Ok(self.pop(operands)?),
             "call" => Ok(self.call(operands)?),
             "ret" => Ok(self.ret(operands)?),
-            "je" => Ok(self.je(operands)),
-            "jne" => Ok(self.jne(operands)),
-            "jg" => Ok(self.jg(operands)),
+            "jge" => Ok(self.jge(operands)),
             "jl" => Ok(self.jl(operands)),
             _ => Err(CPUError::NoImplementation(operation_name.to_string())),
         }
@@ -148,12 +153,13 @@ impl MyCPU {
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)?;
 
-        if let Some((&eof_byte, instructions)) = buffer.split_last() {
-            for &byte in instructions {
-                self.program_memory.set(self.program_counter, byte)?;
-                self.program_counter += 1;
-            }
-            self.eof = eof_byte as u32;
+        let eof = buffer.split_off(buffer.len() - 4);
+        self.eof = u32::from_be_bytes(eof.try_into().unwrap());
+
+        let instructions = buffer;
+        for byte in instructions {
+            self.program_memory.set(self.program_counter, byte)?;
+            self.program_counter += 1;
         }
 
         self.program_counter = 0;

@@ -15,7 +15,7 @@ impl Parser {
         return Self {};
     }
 
-    pub fn parse(&mut self, line: &str) -> Result<Option<Instruction>, ParserError> {
+    pub fn parse(&mut self, line: &str) -> Result<Instruction, ParserError> {
         let instruction = line.split(';').next().ok_or(ParserError::ParseError {
             message: format!(
                 "Unable to parse instruction out of line: {}",
@@ -26,11 +26,11 @@ impl Parser {
         let mut parsed_instruction = Instruction::new();
 
         let instruction = if let Some((label, instruction)) = instruction.split_once(':') {
-            if instruction.trim().is_empty() {
-                return Err(ParserError::ParseError {
-                    message: format!("The label cannot be empty: {}", line.to_string()),
-                });
-            }
+            // if instruction.trim().is_empty() {
+            //     return Err(ParserError::ParseError {
+            //         message: format!("The label cannot be empty: {}", line.to_string()),
+            //     });
+            // }
             parsed_instruction.set_label(label.trim().to_string());
             instruction
         } else {
@@ -39,12 +39,12 @@ impl Parser {
         .trim();
 
         if instruction.is_empty() {
-            return Ok(None);
+            return Ok(parsed_instruction);
         }
 
         if !instruction.contains(' ') {
             parsed_instruction.set_operation_name(instruction.to_string());
-            return Ok(Some(parsed_instruction));
+            return Ok(parsed_instruction);
         }
 
         let (opcode, operands) = instruction
@@ -66,6 +66,6 @@ impl Parser {
             parsed_instruction.add_operand(operand.trim().to_string());
             Ok::<(), ParserError>(())
         })?;
-        Ok(Some(parsed_instruction))
+        Ok(parsed_instruction)
     }
 }

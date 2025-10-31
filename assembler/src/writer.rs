@@ -136,7 +136,7 @@ impl Writer {
 
     pub fn close(&mut self, bits_written: u32) -> Result<(), WriterError> {
         self.flush()?;
-        self.add_to_buffer(bits_written, 8)?;
+        self.add_to_buffer(bits_written, 32)?;
         self.flush()?;
         println!("Binary written to file: output.bin");
         if let Some(debug_file) = self.debug_file.as_mut() {
