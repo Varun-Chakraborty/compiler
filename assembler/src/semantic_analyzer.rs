@@ -5,15 +5,17 @@ use logger::{Logger, LoggerError};
 use regex::Regex;
 
 use crate::{
+    bin_generator::{BinGenError, BinGenerator},
     instruction::{Instruction, InstructionField, SemanticallyParsedInstruction},
-    writer::{Writer, WriterError},
 };
 
 #[derive(Debug, thiserror::Error)]
 pub enum SemanticError {
     #[error("Regex Compilation error: {0}")]
     RegexCompilation(#[from] regex::Error),
-    #[error("Operand {operand} does not match the operand type: {operand_type} which looks like {operand_regex} at line: {line}")]
+    #[error(
+        "Operand {operand} does not match the operand type: {operand_type} which looks like {operand_regex} at line: {line}"
+    )]
     OperandDoesNotMatch {
         operand: String,
         operand_type: OperandType,
@@ -36,8 +38,8 @@ pub enum SemanticError {
     },
     #[error("{0}")]
     OperationName(#[from] OptSpecError),
-    #[error("Writer error: {0}")]
-    WriterError(#[from] WriterError),
+    #[error("Binary generator error: {0}")]
+    BinGenerator(#[from] BinGenError),
     #[error("The label in the statement '{0}' has no name")]
     LabelHasNoName(String),
     #[error("Logger error: {0}")]
@@ -93,7 +95,7 @@ impl SemanticAnalyzer {
     pub fn patch(
         &mut self,
         label: String,
-        writer: &mut Writer,
+        bin_generator: &mut BinGenerator,
         tii: &mut HashMap<String, Vec<u32>>,
         location_counter: &mut u32,
         logger: &mut Logger,
@@ -107,7 +109,7 @@ impl SemanticAnalyzer {
                         addr, location_counter
                     ))?;
                 }
-                writer.patch(*addr, *location_counter, 8)?;
+                bin_generator.patch(*addr, *location_counter, 8)?;
             }
         }
         Ok(())
@@ -120,7 +122,7 @@ impl SemanticAnalyzer {
         symtab: &mut HashMap<String, u32>,
         tii: &mut HashMap<String, Vec<u32>>,
         location_counter: &mut u32,
-        writer: &mut Writer,
+        bin_generator: &mut BinGenerator,
         logger: &mut Logger,
     ) -> Result<Option<SemanticallyParsedInstruction>, SemanticError> {
         if self.debug {
@@ -141,7 +143,7 @@ impl SemanticAnalyzer {
                         symtab.insert(label.to_string(), *location_counter);
                     }
                 };
-                self.patch(label, writer, tii, location_counter, logger)?;
+                self.patch(label, bin_generator, tii, location_counter, logger)?;
             }
         }
 
@@ -183,14 +185,12 @@ impl SemanticAnalyzer {
             }
         };
 
-        // zip operand and the corresponding operand spec
         let operands: Result<Vec<InstructionField>, SemanticError> = expected_operands
             .iter()
             .zip(operands.iter())
             .map(|(spec, token)| {
                 let re = Regex::new(spec.operand_regex.as_str())?;
-                
-                // parse data
+
                 match spec.operand_type {
                     OperandType::Register => {
                         if !re.is_match(&token) {

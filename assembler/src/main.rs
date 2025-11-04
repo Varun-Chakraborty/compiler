@@ -1,14 +1,6 @@
-mod assembler;
-mod bin_generator;
-mod delimiter;
-mod instruction;
-mod parser;
-mod semantic_analyzer;
-mod writer;
-
-use crate::assembler::MyAssembler;
+use assembler::{MyAssembler, writer::Writer};
 use args::Args;
-use std::process;
+use std::{fs::File, io::{BufReader, Read}, process};
 
 fn main() {
     let args = match Args::parse() {
@@ -45,8 +37,26 @@ fn main() {
             println!("ASCII binary would be prettified.");
         }
     }
-    if let Err(err) = assembler.assemble(&input_filename) {
-        println!("Failed to assemble:\n\t{}", err);
-        process::exit(1);
+    
+    let file = File::open(&input_filename).expect("Failed to open file");
+    println!("Assembly file: {}", input_filename);
+    let mut buffer = String::new();
+    let mut reader = BufReader::new(file);
+    reader.read_to_string(&mut buffer).expect("Failed to read file");
+    
+    match assembler.assemble(buffer) {
+        Ok((binary, mut delimiter_table)) => {
+            match Writer::new(args.debug, args.pretty) {
+                Ok(mut writer) => writer.write(binary, &mut delimiter_table).unwrap(),
+                Err(err) => {
+                    println!("Failed to create writer:\n\t{}", err);
+                    process::exit(1);
+                }
+            }
+        },
+        Err(err) => {
+            println!("Failed to assemble:\n\t{}", err);
+            process::exit(1);
+        }
     };
 }

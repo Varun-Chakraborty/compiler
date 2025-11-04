@@ -1,9 +1,10 @@
+#[derive(Default)]
 pub struct Args {
     pub input_filename: Option<String>,
     pub debug: bool,
     pub pretty: bool,
     pub log_to: Option<String>,
-    pub path: Option<String>,
+    pub path: String,
     pub filename: Option<String>,
 }
 
@@ -22,12 +23,12 @@ impl Args {
                 debug: false,
                 pretty: false,
                 log_to: None,
-                path: None,
+                path: String::from("/logs/"),
                 filename: None,
             });
         }
-        let debug = args.contains(&"--debug".to_string());
-        let pretty = args.contains(&"--pretty".to_string());
+        let debug = args.contains(&String::from("--debug"));
+        let pretty = args.contains(&String::from("--pretty"));
         let log_to = args.iter().fold(None, |acc, x| {
             if x.contains("--log=") {
                 Some(x[6..].to_string())
@@ -35,9 +36,9 @@ impl Args {
                 acc
             }
         });
-        let path = args.iter().fold(None, |acc, x| {
+        let path = args.iter().fold("", |acc, x| {
             if x.contains("--path=") {
-                Some(x[7..].to_string())
+                &x[7..]
             } else {
                 acc
             }
@@ -54,7 +55,7 @@ impl Args {
             debug,
             pretty,
             log_to,
-            path,
+            path: path.to_string(),
             filename,
         })
     }

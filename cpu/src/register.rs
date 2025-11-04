@@ -8,9 +8,10 @@ pub enum RegisterError {
     InvalidRegister(u32),
 }
 
+#[derive(Debug, Clone)]
 pub struct Register<T> {
-    count: u32,
-    regs: Vec<T>,
+    pub count: u32,
+    pub regs: Vec<T>,
 }
 
 impl<T: Copy + Default + PrimInt + Debug> Register<T> {

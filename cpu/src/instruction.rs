@@ -11,6 +11,7 @@ pub enum InstructionError {
     OperationError(#[from] OptSpecError),
 }
 
+#[derive(Debug)]
 pub struct Instruction {
     opcode: u32,
     operands: Vec<u32>,

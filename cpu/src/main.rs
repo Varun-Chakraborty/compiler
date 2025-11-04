@@ -1,12 +1,6 @@
-mod cpu;
-mod handler;
-mod instruction;
-mod memory;
-mod register;
-
-use crate::cpu::MyCPU;
+use cpu::MyCPU;
 use args::Args;
-use std::process;
+use std::{fs::File, io::{BufReader, Read}, process};
 
 pub fn main() {
     let args = match Args::parse() {
@@ -26,7 +20,7 @@ pub fn main() {
             }
         }
         None => {
-            println!("Usage: assembler <filename.bin> [--debug] [--log=<console|file>]");
+            println!("Usage: cpu <filename.bin> [--debug] [--log=<console|file>]");
             process::exit(1);
         }
     };
@@ -40,18 +34,20 @@ pub fn main() {
     if args.debug {
         println!("Debug mode enabled.");
     }
-    match cpu.load_binary(&input_filename) {
-        Ok(()) => {}
-        Err(err) => {
-            println!("Failed to load binary:\n\t{}", err);
-            std::process::exit(1);
-        }
+    
+    let file = File::open(&input_filename).expect("Failed to open file");
+    println!("Loading binary file: {}", input_filename);
+    let mut reader = BufReader::new(file);
+    let mut buffer = Vec::new();
+    reader.read_to_end(&mut buffer).expect("Failed to read file");
+    
+    if let Err(err) = cpu.load_binary(buffer) {
+        println!("Failed to load binary:\n\t{}", err);
+        std::process::exit(1);
     };
-    match cpu.run() {
-        Ok(()) => {}
-        Err(err) => {
-            println!("Failed to run:\n\t{}", err);
-            std::process::exit(1);
-        }
+
+    if let Err(err) = cpu.run() {
+        println!("Failed to run:\n\t{}", err);
+        std::process::exit(1);
     };
 }

@@ -1,10 +1,15 @@
+mod handler;
+mod instruction;
+mod memory;
+mod register;
+
 use crate::instruction::{Instruction, InstructionError};
 use crate::memory::{Memory, MemoryError};
 use crate::register::{Register, RegisterError};
 use args::Args;
 use isa::{OptSpec, OptSpecError};
 use logger::{LogTo, Logger, LoggerError};
-use std::io::{self, Read};
+use std::io;
 use std::num::ParseIntError;
 
 #[derive(Debug, thiserror::Error)]
@@ -25,8 +30,13 @@ pub enum CPUError {
     Instruction(#[from] InstructionError),
     #[error("Logger error: {0}")]
     Logger(#[from] LoggerError),
+    #[error("Invalid binary")]
+    InvalidBinary,
+    #[error("Error converting Vec to slice")]
+    VecToSlice
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct Flags {
     pub zero: bool,
     pub sign: bool,
@@ -45,6 +55,38 @@ pub struct MyCPU {
     pub opt_spec: OptSpec,
     pub logger: Logger,
     pub stack_pointer: u32,
+}
+
+#[derive(Debug)]
+pub enum Type {
+    Read,
+    Write,
+}
+
+#[derive(Debug)]
+pub struct MemoryAccess {
+    pub address: u32,
+    pub value: u8,
+    pub type_: Type
+}
+
+#[derive(Debug)]
+pub struct ExecutionStep {
+    pub instruction_str: String,
+    pub address: u32,
+    pub changed_flags: Vec<String>,
+    pub changed_regs: Vec<String>,
+    pub memory_access: Option<MemoryAccess>,
+}
+
+#[derive(Clone)]
+pub struct CPUState {
+    pub program_counter: u32,
+    pub registers: Register<u8>,
+    pub flags: Flags,
+    pub program_memory: Memory<u8>,
+    pub data_memory: Memory<u8>,
+    pub stack_pointer: u32
 }
 
 impl MyCPU {
@@ -67,13 +109,9 @@ impl MyCPU {
                 if let Some(filename) = args.filename.clone() {
                     filename
                 } else {
-                    "cpu.txt".to_string()
+                    String::from("cpu.txt")
                 },
-                if let Some(path) = args.path.clone() {
-                    path
-                } else {
-                    "./logs/".to_string()
-                },
+                args.path.clone(),
                 if let Some(log_to) = args.log_to.clone() {
                     if log_to == "file" {
                         LogTo::File
@@ -92,7 +130,7 @@ impl MyCPU {
         &mut self,
         instruction: Instruction,
         program_counter: u32,
-    ) -> Result<(), CPUError> {
+    ) -> Result<ExecutionStep, CPUError> {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
         if self.debug {
@@ -103,9 +141,8 @@ impl MyCPU {
         }
         let operation_name = &self.opt_spec.get_by_opcode(&opcode)?.operation_name;
 
-        // implementation of each operation are present in ./handler.rs
-        match operation_name.to_lowercase().as_str() {
-            "halt" => Ok(self.halt(operands)),
+        let changes = match operation_name.to_lowercase().as_str() {
+            "halt" => Ok(self.halt(operands)?),
             "in" => Ok(self.input(operands)?),
             "out" => Ok(self.output(operands)?),
             "out_16" => Ok(self.output_16(operands)?),
@@ -125,9 +162,9 @@ impl MyCPU {
             "mult_16" => Ok(self.mult_16(operands, false)?),
             "multi" => Ok(self.mult(operands, true)?),
             "mult_16i" => Ok(self.mult_16(operands, true)?),
-            "jmp" => Ok(self.jmp(operands)),
-            "jz" => Ok(self.jz(operands)),
-            "jnz" => Ok(self.jnz(operands)),
+            "jmp" => Ok(self.jmp(operands)?),
+            "jz" => Ok(self.jz(operands)?),
+            "jnz" => Ok(self.jnz(operands)?),
             "and" => Ok(self.and(operands)?),
             "or" => Ok(self.or(operands)?),
             "xor" => Ok(self.xor(operands)?),
@@ -140,43 +177,59 @@ impl MyCPU {
             "pop" => Ok(self.pop(operands)?),
             "call" => Ok(self.call(operands)?),
             "ret" => Ok(self.ret(operands)?),
-            "jge" => Ok(self.jge(operands)),
-            "jl" => Ok(self.jl(operands)),
+            "jge" => Ok(self.jge(operands)?),
+            "jl" => Ok(self.jl(operands)?),
             _ => Err(CPUError::NoImplementation(operation_name.to_string())),
-        }
+        }?;
+
+        Ok(ExecutionStep {
+            instruction_str: format!("{:?}", instruction),
+            address: program_counter,
+            changed_flags: changes.flags,
+            changed_regs: changes.registers,
+            memory_access: changes.memory_access,
+        })
     }
 
-    pub fn load_binary(&mut self, filepath: &str) -> Result<(), CPUError> {
-        use std::fs::File;
-        println!("Loading binary file: {}", filepath);
-        let mut file = File::open(filepath)?;
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)?;
+    pub fn load_binary(&mut self, mut binary_bytes: Vec<u8>) -> Result<(), CPUError> {
+        self.reset();
 
-        let eof = buffer.split_off(buffer.len() - 4);
-        self.eof = u32::from_be_bytes(eof.try_into().unwrap());
+        let eof = binary_bytes.split_off(binary_bytes.len() - 4);
+        self.eof = u32::from_be_bytes(eof.try_into().map_err(|_| CPUError::VecToSlice)?);
 
-        let instructions = buffer;
-        for byte in instructions {
+        for byte in binary_bytes {
             self.program_memory.set(self.program_counter, byte)?;
             self.program_counter += 1;
         }
 
         self.program_counter = 0;
-        println!("Binary file loaded successfully.");
         Ok(())
+    }
+
+    pub fn step(&mut self) -> Result<ExecutionStep, CPUError> {
+        let pc = self.program_counter;
+        let instruction = Instruction::new(
+            &self.program_memory,
+            &mut self.program_counter,
+            &self.opt_spec,
+        )?;
+        self.execute(instruction, pc)
     }
 
     pub fn run(&mut self) -> Result<(), CPUError> {
         println!("Starting execution...");
         while self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
-            let pc = self.program_counter;
-            let instruction = Instruction::new(
-                &self.program_memory,
-                &mut self.program_counter,
-                &self.opt_spec,
-            )?;
-            self.execute(instruction, pc)?;
+            match self.step() {
+                Ok(step_info) => {
+                    if self.debug {
+                        println!("{:?}", step_info);
+                    }
+                },
+                Err(err) => {
+                    println!("Failed to execute instruction:\n\t{}", err);
+                    std::process::exit(1);
+                }
+            }
         }
         println!("End of Execution.");
         if self.debug {
@@ -190,6 +243,32 @@ impl MyCPU {
             self.print_program_counter();
         }
         Ok(())
+    }
+
+    pub fn reset(&mut self) {
+        self.program_counter = 0;
+        self.flags.zero = false;
+        self.flags.carry = false;
+        self.flags.sign = false;
+        self.flags.overflow = false;
+        self.register = Register::new(4);
+        self.data_memory = Memory::new(256);
+        self.program_memory = Memory::new(256);
+    }
+
+    pub fn is_halted(&self) -> bool {
+        self.program_counter >= self.eof
+    }
+
+    pub fn get_state_struct(&self) -> CPUState {
+        CPUState {
+            program_counter: self.program_counter,
+            flags: self.flags,
+            registers: self.register.clone(),
+            data_memory: self.data_memory.clone(),
+            program_memory: self.program_memory.clone(),
+            stack_pointer: self.stack_pointer,
+        }
     }
 
     pub fn print_registers(&self) -> Result<(), CPUError> {

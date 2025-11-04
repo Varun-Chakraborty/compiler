@@ -4,7 +4,7 @@ pub struct Delimiter {
     pub address: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DelimiterTable {
     table: Vec<Delimiter>,
     current: Option<Delimiter>,
@@ -28,12 +28,11 @@ impl DelimiterTable {
         self.table.pop();
     }
 
-    pub fn next(&mut self) -> Option<usize> {
+    pub fn next(&mut self) {
         if let Some(_) = self.current {
             self.current_address += 1;
         }
         self.current = self.table.get(self.current_address).cloned();
-        None
     }
 
     pub fn get_current(&self) -> Option<Delimiter> {

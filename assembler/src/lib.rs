@@ -1,10 +1,13 @@
+mod bin_generator;
+mod delimiter;
+mod instruction;
+mod parser;
+mod semantic_analyzer;
+pub mod writer;
+
 use args::Args;
 use logger::{LogTo, Logger, LoggerError};
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{BufReader, Read},
-};
+use std::{collections::HashMap, mem};
 use thiserror::Error;
 
 use crate::{
@@ -12,7 +15,6 @@ use crate::{
     delimiter::DelimiterTable,
     parser::{Parser, ParserError},
     semantic_analyzer::{SemanticAnalyzer, SemanticError},
-    writer::{Writer, WriterError},
 };
 
 #[derive(Debug, Error)]
@@ -21,8 +23,6 @@ pub enum AssemblerError {
     Io(#[from] std::io::Error),
     #[error("Parser error: {0}")]
     Instruction(#[from] ParserError),
-    #[error("Writer error: {0}")]
-    WriterError(#[from] WriterError),
     #[error("Symbol {0} not found")]
     MissingSymbol(String),
     #[error("Error in semantic analysis: {0}")]
@@ -31,15 +31,16 @@ pub enum AssemblerError {
     BinGen(#[from] BinGenError),
     #[error("Logger error: {0}")]
     Logger(#[from] LoggerError),
+    #[error("Unknown error: {msg}")]
+    Unknown{ msg: String },
 }
 
 pub struct MyAssembler {
-    // To store the symbols
+
     symtab: HashMap<String, u32>,
     location_counter: u32,
-    writer: Writer,
     debug: bool,
-    // To store the instruction whose symbols could not be resolved yet
+
     tii: HashMap<String, Vec<u32>>,
     parser: Parser,
     semantic_analyzer: SemanticAnalyzer,
@@ -53,7 +54,6 @@ impl MyAssembler {
         Ok(Self {
             location_counter: 0,
             symtab: HashMap::new(),
-            writer: Writer::new(args.debug, args.pretty)?,
             debug: args.debug,
             tii: HashMap::new(),
             parser: Parser::new(),
@@ -64,13 +64,9 @@ impl MyAssembler {
                 if let Some(filename) = args.filename.clone() {
                     filename
                 } else {
-                    "assembler.txt".to_string()
+                    String::from("assembler.txt")
                 },
-                if let Some(path) = args.path.clone() {
-                    path
-                } else {
-                    "./logs/".to_string()
-                },
+                args.path.clone(),
                 if let Some(log_to) = args.log_to.clone() {
                     if log_to == "file" {
                         LogTo::File
@@ -89,14 +85,8 @@ impl MyAssembler {
         println!("{:#?}", self.symtab);
     }
 
-    pub fn assemble(&mut self, file_name: &str) -> Result<(), AssemblerError> {
-        let file = File::open(file_name)?;
-        let mut buffer = String::new();
-
-        let mut reader = BufReader::new(file);
-        println!("Assembly file: {}", file_name);
-        reader.read_to_string(&mut buffer)?;
-        for line in buffer.lines() {
+    pub fn assemble(&mut self, assembly_program: String) -> Result<(Vec<u8>, DelimiterTable), AssemblerError> {
+        for line in assembly_program.lines() {
             let instruction = self.parser.parse(line)?;
 
             let instruction = match self.semantic_analyzer.analyze(
@@ -105,7 +95,7 @@ impl MyAssembler {
                 &mut self.symtab,
                 &mut self.tii,
                 &mut self.location_counter,
-                &mut self.writer,
+                &mut self.bin_generator,
                 &mut self.logger,
             )? {
                 Some(instruction) => instruction,
@@ -114,7 +104,6 @@ impl MyAssembler {
 
             self.bin_generator.generate_binary(
                 instruction,
-                &mut self.writer,
                 &mut self.location_counter,
                 &mut self.delimiter_table,
             )?;
@@ -124,11 +113,11 @@ impl MyAssembler {
         }
         if !self.tii.is_empty() {
             return Err(AssemblerError::MissingSymbol(
-                self.tii.keys().next().unwrap().to_string(),
+                self.tii.keys().next().ok_or(AssemblerError::Unknown { msg: "Can't get next key".to_string() })?.to_string(),
             ));
         }
-        self.writer.done(&mut self.delimiter_table)?;
         println!("Assembly completed.");
-        Ok(())
+        let delimiter_table = mem::take(&mut self.delimiter_table);
+        Ok((self.bin_generator.get_binary(), delimiter_table))
     }
 }

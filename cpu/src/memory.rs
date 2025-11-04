@@ -4,11 +4,12 @@ use std::fmt::Debug;
 #[derive(Debug, thiserror::Error)]
 pub enum MemoryError {
     #[error("Memory address out of bounds")]
-    OutOfBounds(),
+    OutOfBounds,
 }
 
+#[derive(Debug, Clone)]
 pub struct Memory<T> {
-    mem: Vec<T>,
+    pub mem: Vec<T>,
 }
 
 impl<T: Copy + Default + PrimInt + Debug> Memory<T> {
@@ -24,7 +25,7 @@ impl<T: Copy + Default + PrimInt + Debug> Memory<T> {
 
     pub fn set(&mut self, cell: u32, value: T) -> Result<(), MemoryError> {
         if cell > self.mem.len() as u32 - 1 {
-            return Err(MemoryError::OutOfBounds());
+            return Err(MemoryError::OutOfBounds);
         }
         self.mem[cell as usize] = value;
         Ok(())
@@ -32,7 +33,7 @@ impl<T: Copy + Default + PrimInt + Debug> Memory<T> {
 
     pub fn get(&self, cell: u32) -> Result<T, MemoryError> {
         if cell > self.mem.len() as u32 - 1 {
-            return Err(MemoryError::OutOfBounds());
+            return Err(MemoryError::OutOfBounds);
         }
         Ok(self.mem[cell as usize])
     }
