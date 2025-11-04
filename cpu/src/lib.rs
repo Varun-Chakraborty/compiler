@@ -57,26 +57,28 @@ pub struct MyCPU {
     pub stack_pointer: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Read,
     Write,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryAccess {
     pub address: u32,
     pub value: u8,
     pub type_: Type
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecutionStep {
     pub instruction_str: String,
     pub address: u32,
     pub changed_flags: Vec<String>,
     pub changed_regs: Vec<String>,
     pub memory_access: Option<MemoryAccess>,
+    pub is_halted: bool,
+    pub stack_pointer: u32
 }
 
 #[derive(Clone)]
@@ -188,6 +190,8 @@ impl MyCPU {
             changed_flags: changes.flags,
             changed_regs: changes.registers,
             memory_access: changes.memory_access,
+            is_halted: self.eof == self.program_counter,
+            stack_pointer: self.stack_pointer,
         })
     }
 
@@ -207,13 +211,12 @@ impl MyCPU {
     }
 
     pub fn step(&mut self) -> Result<ExecutionStep, CPUError> {
-        let pc = self.program_counter;
         let instruction = Instruction::new(
             &self.program_memory,
             &mut self.program_counter,
             &self.opt_spec,
         )?;
-        self.execute(instruction, pc)
+        self.execute(instruction, self.program_counter)
     }
 
     pub fn run(&mut self) -> Result<(), CPUError> {
@@ -254,10 +257,6 @@ impl MyCPU {
         self.register = Register::new(4);
         self.data_memory = Memory::new(256);
         self.program_memory = Memory::new(256);
-    }
-
-    pub fn is_halted(&self) -> bool {
-        self.program_counter >= self.eof
     }
 
     pub fn get_state_struct(&self) -> CPUState {

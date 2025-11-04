@@ -51,23 +51,17 @@ export class MockCPUEmulator implements CPUEmulator {
     }
   }
 
-  step(): ExecutionStep | null {
-    if (this.halted || this.state.program_counter >= this.program.length) {
-      this.halted = true;
-      return null;
-    }
-
+  step(): ExecutionStep {
     const instruction = this.program[this.state.program_counter];
     const address = this.state.program_counter;
     const changed_registers: string[] = [];
     const changed_flags: string[] = [];
-    let memoryAccess: ExecutionStep['memoryAccess'] = undefined;
+    let memory_access: ExecutionStep['memory_access'] = undefined;
 
     // Simple instruction parser
     const parts = instruction.toUpperCase().split(/\s+/);
     const opcode = parts[0];
 
-    const prevRegs = [...this.state.registers.regs];
     const prevFlags = { ...this.state.flags };
 
     const getRegIndex = (name: string): number => {
@@ -162,7 +156,7 @@ export class MockCPUEmulator implements CPUEmulator {
           
           if (idx >= 0 && address < 256) {
             this.state.registers.regs[idx] = this.state.data_memory.mem[address];
-            memoryAccess = { address, type: 'read', value: this.state.data_memory.mem[address] };
+            memory_access = { address, type_: 'read', value: this.state.data_memory.mem[address] };
             changed_registers.push(`R${idx}`);
           }
         }
@@ -179,7 +173,7 @@ export class MockCPUEmulator implements CPUEmulator {
           if (idx >= 0 && address < 256) {
             const value = this.state.registers.regs[idx];
             this.state.data_memory.mem[address] = value;
-            memoryAccess = { address, type: 'write', value };
+            memory_access = { address, type_: 'write', value };
           }
         }
         break;
@@ -202,7 +196,9 @@ export class MockCPUEmulator implements CPUEmulator {
       address,
       changed_registers,
       changed_flags: actualChangedFlags,
-      memoryAccess,
+      memory_access,
+      is_halted: this.halted,
+      stack_pointer: this.state.stack_pointer
     };
   }
 

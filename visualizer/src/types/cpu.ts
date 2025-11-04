@@ -26,11 +26,13 @@ export interface ExecutionStep {
   address: number;
   changed_registers: string[];
   changed_flags: string[];
-  memoryAccess?: {
+  memory_access?: {
     address: number;
-    type: 'read' | 'write';
+    type_: 'read' | 'write';
     value: number;
   };
+  stack_pointer: number;
+  is_halted: boolean;
 }
 
 export interface CPUEmulator {

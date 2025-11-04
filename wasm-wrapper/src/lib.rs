@@ -1,10 +1,9 @@
-use core::panic;
-
 use args::Args;
 use assembler::MyAssembler;
 use cpu::MyCPU;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 #[derive(Serialize)]
 pub struct JsRegisters {
@@ -32,9 +31,16 @@ pub struct JsInstruction {
 }
 
 #[derive(Serialize)]
+pub enum Type {
+    Read,
+    Write,
+}
+
+#[derive(Serialize)]
 pub struct MemAccess {
     pub address: u32,
     pub value: u8,
+    pub type_: Type,
 }
 
 #[derive(Serialize)]
@@ -53,6 +59,9 @@ pub struct JsExecutionStep {
     pub address: u32,
     pub changed_registers: Vec<String>,
     pub changed_flags: Vec<String>,
+    pub memory_access: Option<MemAccess>,
+    pub is_halted: bool,
+    pub stack_pointer: u32,
 }
 
 #[wasm_bindgen]
@@ -85,7 +94,7 @@ impl MyCpuController {
 
     #[wasm_bindgen]
     pub fn step(&mut self) -> JsValue {
-        panic!("Executing step function");
+        console::log_1(&JsValue::from_str("Executing step function"));
         match self.cpu.step() {
             Ok(step_info) => {
                 let js_step = JsExecutionStep {
@@ -93,13 +102,25 @@ impl MyCpuController {
                     address: step_info.address,
                     changed_registers: step_info.changed_regs,
                     changed_flags: step_info.changed_flags,
+                    memory_access: if let Some(memory_access) = step_info.memory_access { 
+                        Some(MemAccess {
+                            address: memory_access.address.clone(),
+                            value: memory_access.value,
+                            type_: if memory_access.type_ == cpu::Type::Read {
+                                Type::Read
+                            } else {
+                                Type::Write
+                            },
+                        })
+                    } else { None },
+                    is_halted: step_info.is_halted,
+                    stack_pointer: step_info.stack_pointer,
                 };
 
-                serde_wasm_bindgen::to_value(&js_step).unwrap()
+                serde_wasm_bindgen::to_value(&js_step).unwrap_or_else(|e| JsValue::from_str(&e.to_string()))
             }
             Err(_) => JsValue::NULL,
         }
-        // panic!("Executing step function");
     }
 
     #[wasm_bindgen(js_name = getState)]
@@ -128,10 +149,5 @@ impl MyCpuController {
     #[wasm_bindgen]
     pub fn reset(&mut self) {
         self.cpu.reset();
-    }
-
-    #[wasm_bindgen(js_name = isHalted)]
-    pub fn is_halted(&self) -> bool {
-        self.cpu.is_halted()
     }
 }

@@ -22,6 +22,7 @@ export default function App() {
   const [code, setCode] = useState(DEFAULT_PROGRAM);
   const [cpuState, setCpuState] = useState<CPUState | null>(null);
   const [currentStep, setCurrentStep] = useState<ExecutionStep | null>(null);
+  const [lineNumber, setLineNumber] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isHalted, setIsHalted] = useState(false);
   const [executionSpeed, setExecutionSpeed] = useState(500);
@@ -30,7 +31,7 @@ export default function App() {
   const [usingMockEmulator, setUsingMockEmulator] = useState(true);
 
   const emulatorRef = useRef<CPUEmulator>(new MockCPUEmulator());
-  const runIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const runIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // Try to load WASM emulator, fall back to mock if it fails
@@ -70,22 +71,23 @@ export default function App() {
     if (isHalted) return;
     const step = emulatorRef.current.step();
 
-    if (step) {
-      setCurrentStep(step);
-      setCpuState(emulatorRef.current.getState());
-      setChangedRegisters(step.changed_registers);
-      setChangedFlags(step.changed_flags);
+    if (!step) return;
 
-      // Clear highlights after a delay
-      setTimeout(() => {
-        setChangedRegisters([]);
-        setChangedFlags([]);
-      }, 800);
-    } else {
-      setIsHalted(true);
-      setIsRunning(false);
-      toast.info('Program halted');
-    }
+    setLineNumber(prev => prev + 1);
+  
+    setCurrentStep(step);
+    setCpuState(emulatorRef.current.getState());
+    setChangedRegisters(step.changed_registers);
+    setChangedFlags(step.changed_flags);
+    
+    // Clear highlights after a delay
+    setTimeout(() => {
+      setChangedRegisters([]);
+      setChangedFlags([]);
+    }, 800);
+    setIsHalted(true);
+    setIsRunning(false);
+    toast.info('Program halted');
   };
 
   const handleRun = () => {
@@ -190,7 +192,7 @@ export default function App() {
               <AssemblyEditor
                 code={code}
                 onChange={setCode}
-                currentLine={currentStep?.address}
+                currentLine={lineNumber}
               />
             </Card>
           </div>
@@ -240,8 +242,8 @@ export default function App() {
                 <MemoryViewer
                   programMemory={cpuState.program_memory.mem}
                   dataMemory={cpuState.data_memory.mem}
-                  accessedAddress={currentStep?.memoryAccess?.address}
-                  accessType={currentStep?.memoryAccess?.type}
+                  accessedAddress={currentStep?.memory_access?.address}
+                  accessType={currentStep?.memory_access?.type_}
                   activeMemoryType="data"
                 />
               )}
