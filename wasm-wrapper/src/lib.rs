@@ -81,62 +81,78 @@ impl MyCpuController {
         MyCpuController { cpu, assembler }
     }
 
+    // explicit destructor you should call from JS before re-init/HMR
+    #[wasm_bindgen(js_name = free)]
+    pub fn free(self) {
+        // consumed and dropped here
+    }
+
     #[wasm_bindgen(js_name = loadProgram)]
     pub fn load_program(&mut self, assembly_string: String) -> bool {
         match self.assembler.assemble(assembly_string) {
             Ok((binary, _)) => {
-                let binary_str = &binary.iter().map(|byte| {
-                    // binary representation
-                    let byte_string = format!("{:08b}", byte);
-                    byte_string
-                }).collect::<Vec<String>>().join(" ");
-                console::log_1(&JsValue::from_str(binary_str));
-                println!("Program assembled");
+                // produce a human readable binary string and log it to browser console
+                let byte_strs: Vec<String> = binary.iter().map(|byte| format!("{:08b}", byte)).collect();
+                let binary_str = byte_strs.join(" ");
+                console::log_1(&JsValue::from_str(&binary_str));
+                console::log_1(&JsValue::from_str("Program assembled"));
                 self.cpu.load_binary(binary).is_ok()
             },
-            Err(_) => false,
+            Err(e) => {
+                console::error_1(&JsValue::from_str(&format!("assemble error: {:?}", e)));
+                false
+            },
         }
     }
 
     #[wasm_bindgen]
     pub fn step(&mut self) -> JsValue {
+        // deterministic log to ensure we can see we reached this point
         console::log_1(&JsValue::from_str("Executing step function"));
+
         match self.cpu.step() {
             Ok(step_info) => {
+                // Build owned snapshot for JS
                 let js_step = JsExecutionStep {
                     instruction: step_info.instruction_str,
                     address: step_info.address,
                     changed_registers: step_info.changed_regs,
                     changed_flags: step_info.changed_flags,
-                    memory_access: if let Some(memory_access) = step_info.memory_access { 
-                        Some(MemAccess {
-                            address: memory_access.address.clone(),
-                            value: memory_access.value,
-                            type_: if memory_access.type_ == cpu::Type::Read {
-                                Type::Read
-                            } else {
-                                Type::Write
-                            },
-                        })
-                    } else { None },
+                    memory_access: step_info.memory_access.map(|ma| MemAccess {
+                        address: ma.address,
+                        value: ma.value,
+                        type_: if ma.type_ == cpu::Type::Read { Type::Read } else { Type::Write },
+                    }),
                     is_halted: step_info.is_halted,
                     stack_pointer: step_info.stack_pointer,
                 };
 
-                serde_wasm_bindgen::to_value(&js_step).unwrap_or_else(|e| JsValue::from_str(&e.to_string()))
+                match serde_wasm_bindgen::to_value(&js_step) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        let msg = format!("serialize step error: {}", e);
+                        console::error_1(&JsValue::from_str(&msg));
+                        JsValue::from_str(&msg)
+                    }
+                }
             }
-            Err(_) => JsValue::NULL,
+            Err(e) => {
+                let msg = format!("step error: {:?}", e);
+                console::error_1(&JsValue::from_str(&msg));
+                JsValue::from_str(&msg)
+            }
         }
     }
 
     #[wasm_bindgen(js_name = getState)]
     pub fn get_state(&self) -> JsValue {
+        // clone snapshot from CPU state to avoid exposing internal shared pointers
         let state = self.cpu.get_state_struct().clone();
         let jscpustate = JsCPUState {
             program_counter: state.program_counter,
             registers: JsRegisters {
                 count: state.registers.count,
-                regs: state.registers.regs,
+                regs: state.registers.regs.clone(), // <-- clone for owned snapshot
             },
             flags: JsFlags {
                 zero: state.flags.zero,
@@ -149,7 +165,14 @@ impl MyCpuController {
             stack_pointer: state.stack_pointer,
         };
 
-        serde_wasm_bindgen::to_value(&jscpustate).unwrap()
+        match serde_wasm_bindgen::to_value(&jscpustate) {
+            Ok(v) => v,
+            Err(e) => {
+                let msg = format!("get_state serialize error: {}", e);
+                console::error_1(&JsValue::from_str(&msg));
+                JsValue::from_str(&msg)
+            }
+        }
     }
 
     #[wasm_bindgen]

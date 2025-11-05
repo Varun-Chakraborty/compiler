@@ -4,6 +4,7 @@ export class MyCpuController {
   free(): void;
   [Symbol.dispose](): void;
   constructor();
+  free(): void;
   loadProgram(assembly_string: string): boolean;
   step(): any;
   getState(): any;
@@ -16,6 +17,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_mycpucontroller_free: (a: number, b: number) => void;
   readonly mycpucontroller_new: () => number;
+  readonly mycpucontroller_free: (a: number) => void;
   readonly mycpucontroller_loadProgram: (a: number, b: number, c: number) => number;
   readonly mycpucontroller_step: (a: number) => any;
   readonly mycpucontroller_getState: (a: number) => any;

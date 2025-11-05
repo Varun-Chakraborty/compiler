@@ -44,10 +44,6 @@ HALT"
           spellCheck={false}
         />
       </div>
-
-      <div className="mt-2 text-xs text-zinc-500">
-        Supported instructions: MOV, ADD, SUB, INC, DEC, LOAD, STORE, HLT
-      </div>
     </div>
   );
 }

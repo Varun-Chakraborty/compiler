@@ -262,36 +262,96 @@ export default function App() {
           <h3 className="text-sm mb-2 text-zinc-400">Instructions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-zinc-500">
             <div>
-              <div className="font-mono text-zinc-300 mb-1">MOV dest src</div>
+              <div className="font-mono text-zinc-300 mb-1">MOVEI reg immediate</div>
               <div>Move value to register</div>
             </div>
             <div>
-              <div className="font-mono text-zinc-300 mb-1">ADD dest src</div>
-              <div>Add src to dest</div>
+              <div className="font-mono text-zinc-300 mb-1">MOVER reg addr</div>
+              <div>Move value from src memory addr to dest register</div>
             </div>
             <div>
-              <div className="font-mono text-zinc-300 mb-1">SUB dest src</div>
-              <div>Subtract src from dest</div>
+              <div className="font-mono text-zinc-300 mb-1">MOVEM reg addr</div>
+              <div>Move value from src register to dest memory addr</div>
             </div>
             <div>
-              <div className="font-mono text-zinc-300 mb-1">INC reg / DEC reg</div>
-              <div>Increment/decrement register</div>
+              <div className="font-mono text-zinc-300 mb-1">ADD reg1 reg2</div>
+              <div>Add two registers</div>
             </div>
             <div>
-              <div className="font-mono text-zinc-300 mb-1">LOAD reg addr</div>
-              <div>Load from memory to register</div>
+              <div className="font-mono text-zinc-300 mb-1">ADDI reg immediate</div>
+              <div>Add value to register</div>
             </div>
             <div>
-              <div className="font-mono text-zinc-300 mb-1">STORE reg addr</div>
-              <div>Store register to memory</div>
+              <div className="font-mono text-zinc-300 mb-1">ADC reg1 reg2</div>
+              <div>Add two registers with carry</div>
             </div>
             <div>
-              <div className="font-mono text-zinc-300 mb-1">HLT</div>
+              <div className="font-mono text-zinc-300 mb-1">ADCI reg immediate</div>
+              <div>Add value to register with carry</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">SUB reg1 reg2</div>
+              <div>Subtract two registers</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">SUBI reg immediate</div>
+              <div>Subtract value from register</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">SBC reg1 reg2</div>
+              <div>Subtract two registers with carry</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">SBCI reg immediate</div>
+              <div>Subtract value from register with carry</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">MULT reg1 reg2</div>
+              <div>Multiply two registers</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">MULTI reg immediate</div>
+              <div>Multiply register by value</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">MULT_16 reg</div>
+              <div>Multiply a 16 bit super register (currently fixed to be R1:R0) by a 8 bit register</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">JMP addr</div>
+              <div>Unconditionally jump to address addr in program memory</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">JZ addr</div>
+              <div>If zero flag is set, jump to address addr</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">JNZ addr</div>
+              <div>If zero flag is not set, jump to address addr</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">CALL addr</div>
+              <div>Push the current program counter onto the stack and jump to address addr</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">RET</div>
+              <div>Jump to the address on the top of the stack</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">PUSH reg</div>
+              <div>Push the value of a register onto the stack</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">POP reg</div>
+              <div>Pop the value from the top of the stack into a register</div>
+            </div>
+            <div>
+              <div className="font-mono text-zinc-300 mb-1">HALT</div>
               <div>Halt execution</div>
             </div>
             <div>
-              <div className="font-mono text-zinc-300 mb-1">#XX</div>
-              <div>Immediate value (hex)</div>
+              <div className="font-mono text-zinc-300 mb-1">XXX</div>
+              <div>Immediate value (integer)</div>
             </div>
           </div>
         </Card>
