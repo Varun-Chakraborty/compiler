@@ -39,7 +39,7 @@ export function AssemblyEditor({ code, onChange, currentLine }: AssemblyEditorPr
 MOVEI R0, 16
 MOVEI R1, 6
 ADD R0, R1
-MOVEM R0, #F0
+MOVEM R0, 0
 HALT"
           spellCheck={false}
         />

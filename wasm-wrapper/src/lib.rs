@@ -85,6 +85,12 @@ impl MyCpuController {
     pub fn load_program(&mut self, assembly_string: String) -> bool {
         match self.assembler.assemble(assembly_string) {
             Ok((binary, _)) => {
+                let binary_str = &binary.iter().map(|byte| {
+                    // binary representation
+                    let byte_string = format!("{:08b}", byte);
+                    byte_string
+                }).collect::<Vec<String>>().join(" ");
+                console::log_1(&JsValue::from_str(binary_str));
                 println!("Program assembled");
                 self.cpu.load_binary(binary).is_ok()
             },

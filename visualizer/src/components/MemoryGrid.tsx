@@ -17,7 +17,7 @@ export function MemoryGrid({ memory, accessedAddress, accessType, title }: Memor
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 px-2">
         <h3 className="text-sm text-zinc-400">{title || `Memory (${memory.length} bytes)`}</h3>
         {hoveredAddress !== null && (
           <div className="text-xs text-zinc-500 font-mono">
@@ -27,7 +27,7 @@ export function MemoryGrid({ memory, accessedAddress, accessType, title }: Memor
         )}
       </div>
       
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-full">
         <div className="space-y-1">
           {Array.from({ length: rows }, (_, rowIndex) => {
             const startAddr = rowIndex * 16;

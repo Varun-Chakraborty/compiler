@@ -36,8 +36,8 @@ export class WasmCPUEmulator implements CPUEmulator {
     if (!this.cpu) return null;
 
     try {
-      console.log(this.cpu.getState());
       const result = this.cpu.step();
+      console.log(result);
       this.is_halted = result.is_halted;
       return {
         instruction: result.instruction,

@@ -15,7 +15,7 @@ const DEFAULT_PROGRAM = `; Simple program
 MOVEI R0, 16
 MOVEI R1, 6
 ADD R0, R1
-MOVEM R0, 240
+MOVEM R0, 0
 HALT`;
 
 export default function App() {
@@ -24,7 +24,7 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<ExecutionStep | null>(null);
   const [lineNumber, setLineNumber] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [isHalted, setIsHalted] = useState(false);
+  const [isHalted, setIsHalted] = useState(true);
   const [executionSpeed, setExecutionSpeed] = useState(500);
   const [changedRegisters, setChangedRegisters] = useState<string[]>([]);
   const [changedFlags, setChangedFlags] = useState<string[]>([]);
@@ -74,20 +74,22 @@ export default function App() {
     if (!step) return;
 
     setLineNumber(prev => prev + 1);
-  
+
     setCurrentStep(step);
     setCpuState(emulatorRef.current.getState());
     setChangedRegisters(step.changed_registers);
     setChangedFlags(step.changed_flags);
-    
+    if (step.is_halted) {
+      setIsHalted(true);
+      setIsRunning(false);
+      toast.info('Program halted');
+    }
+
     // Clear highlights after a delay
     setTimeout(() => {
       setChangedRegisters([]);
       setChangedFlags([]);
     }, 800);
-    setIsHalted(true);
-    setIsRunning(false);
-    toast.info('Program halted');
   };
 
   const handleRun = () => {
@@ -98,17 +100,15 @@ export default function App() {
     const executeStep = () => {
       const step = emulatorRef.current.step();
 
-      if (step) {
-        setCurrentStep(step);
-        setCpuState(emulatorRef.current.getState());
-        setChangedRegisters(step.changed_registers);
-        setChangedFlags(step.changed_flags);
+      if (!step) return;
 
-        setTimeout(() => {
-          setChangedRegisters([]);
-          setChangedFlags([]);
-        }, Math.min(300, executionSpeed / 2));
-      } else {
+      setLineNumber(prev => prev + 1);
+
+      setCurrentStep(step);
+      setCpuState(emulatorRef.current.getState());
+      setChangedRegisters(step.changed_registers);
+      setChangedFlags(step.changed_flags);
+      if (step.is_halted) {
         setIsHalted(true);
         setIsRunning(false);
         if (runIntervalRef.current) {
@@ -116,6 +116,12 @@ export default function App() {
         }
         toast.info('Program halted');
       }
+
+      setTimeout(() => {
+        setChangedRegisters([]);
+        setChangedFlags([]);
+      }, Math.min(300, executionSpeed / 2));
+
     };
 
     if (executionSpeed === 0) {

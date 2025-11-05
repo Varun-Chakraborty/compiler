@@ -19,13 +19,13 @@ export function MemoryViewer({
 }: MemoryViewerProps) {
   return (
     <Card className="p-4 bg-zinc-900 border-zinc-800 h-full flex flex-col">
-      <Tabs defaultValue={activeMemoryType} className="flex-1 flex flex-col">
+      <Tabs defaultValue={activeMemoryType} className="flex-1 flex flex-col h-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
           <TabsTrigger value="program">Program Memory</TabsTrigger>
           <TabsTrigger value="data">Data Memory</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="program" className="flex-1 mt-0">
+        <TabsContent value="program" className="flex-1 mt-0 h-full overflow-y-scroll">
           <MemoryGrid
             memory={programMemory}
             accessedAddress={activeMemoryType === 'program' ? accessedAddress : undefined}
@@ -34,7 +34,7 @@ export function MemoryViewer({
           />
         </TabsContent>
         
-        <TabsContent value="data" className="flex-1 mt-0">
+        <TabsContent value="data" className="flex-1 mt-0 h-full overflow-y-scroll">
           <MemoryGrid
             memory={dataMemory}
             accessedAddress={activeMemoryType === 'data' ? accessedAddress : undefined}
