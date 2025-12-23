@@ -36,13 +36,12 @@ impl Args {
                 acc
             }
         });
-        let path = args.iter().fold("", |acc, x| {
-            if x.contains("--path=") {
-                &x[7..]
-            } else {
-                acc
-            }
-        });
+        let path = args.iter().fold(
+            "",
+            |acc, x| {
+                if x.contains("--path=") { &x[7..] } else { acc }
+            },
+        );
         let filename = args.iter().fold(None, |acc, x| {
             if x.contains("--filename=") {
                 Some(x[11..].to_string())

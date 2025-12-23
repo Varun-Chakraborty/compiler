@@ -82,6 +82,7 @@ impl OptSpec {
         let reg_reg = vec![reg.clone(), reg.clone()];
         let label = vec![label.clone()];
         let reg_const = vec![reg.clone(), constant.clone()];
+        let constant_only = vec![constant.clone()];
 
         Self {
             opcode_bit_count: 6,
@@ -120,8 +121,13 @@ impl OptSpec {
                 Operation::new("SHR", 29, reg_only.clone()),
                 Operation::new("CMP", 30, reg_reg.clone()),
                 Operation::new("CMPI", 31, reg_const.clone()),
+                Operation::new("JG", 38, label.clone()),
                 Operation::new("JGE", 36, label.clone()),
                 Operation::new("JL", 37, label.clone()),
+                Operation::new("JLE", 39, label.clone()),
+                Operation::new("JNE", 40, label.clone()),
+                Operation::new("JE", 41, label.clone()),
+                Operation::new("DB", 42, constant_only.clone()),
             ],
         }
     }

@@ -24,7 +24,7 @@ fn main() {
             process::exit(1);
         }
     };
-    let mut assembler = match MyAssembler::new(&args) {
+    let mut assembler = match MyAssembler::new() {
         Ok(assembler) => assembler,
         Err(err) => {
             println!("Failed to create assembler:\n\t{}", err);
@@ -40,11 +40,11 @@ fn main() {
     
     let file = File::open(&input_filename).expect("Failed to open file");
     println!("Assembly file: {}", input_filename);
-    let mut buffer = String::new();
+    let mut assembly_program = String::new();
     let mut reader = BufReader::new(file);
-    reader.read_to_string(&mut buffer).expect("Failed to read file");
+    reader.read_to_string(&mut assembly_program).expect("Failed to read file");
     
-    match assembler.assemble(buffer) {
+    match assembler.assemble(assembly_program.as_str()) {
         Ok((binary, mut delimiter_table)) => {
             match Writer::new(args.debug, args.pretty) {
                 Ok(mut writer) => writer.write(binary, &mut delimiter_table).unwrap(),

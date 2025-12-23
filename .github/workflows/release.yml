@@ -42,7 +42,7 @@ jobs:
           filename: 'compiler-toolchain-${{ github.ref_name }}-${{ runner.os }}.zip'
           directory: './target/release/'
           path: |
-            cpu${{ runner.os == 'Windows' && '.exe' || '' }}
+            vm${{ runner.os == 'Windows' && '.exe' || '' }}
             assembler${{ runner.os == 'Windows' && '.exe' || '' }}
       
       # 7. Upload the single toolchain archive to the GitHub Release page

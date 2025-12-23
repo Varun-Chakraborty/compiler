@@ -13,7 +13,7 @@ use std::io;
 use std::num::ParseIntError;
 
 #[derive(Debug, thiserror::Error)]
-pub enum CPUError {
+pub enum VMError {
     #[error("{0}")]
     Memory(#[from] MemoryError),
     #[error("{0}")]
@@ -33,7 +33,7 @@ pub enum CPUError {
     #[error("Invalid binary")]
     InvalidBinary,
     #[error("Error converting Vec to slice")]
-    VecToSlice
+    VecToSlice,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -44,7 +44,7 @@ pub struct Flags {
     pub carry: bool,
 }
 
-pub struct MyCPU {
+pub struct MyVM {
     pub program_counter: u32,
     pub eof: u32,
     pub program_memory: Memory<u8>,
@@ -67,7 +67,7 @@ pub enum Type {
 pub struct MemoryAccess {
     pub address: u32,
     pub value: u8,
-    pub type_: Type
+    pub type_: Type,
 }
 
 #[derive(Debug, Clone)]
@@ -78,21 +78,21 @@ pub struct ExecutionStep {
     pub changed_regs: Vec<String>,
     pub memory_access: Option<MemoryAccess>,
     pub is_halted: bool,
-    pub stack_pointer: u32
+    pub stack_pointer: u32,
 }
 
 #[derive(Clone)]
-pub struct CPUState {
+pub struct VMState {
     pub program_counter: u32,
     pub registers: Register<u8>,
     pub flags: Flags,
     pub program_memory: Memory<u8>,
     pub data_memory: Memory<u8>,
-    pub stack_pointer: u32
+    pub stack_pointer: u32,
 }
 
-impl MyCPU {
-    pub fn new(args: &Args) -> Result<Self, CPUError> {
+impl MyVM {
+    pub fn new(args: &Args) -> Result<Self, VMError> {
         Ok(Self {
             program_counter: 0,
             eof: 0,
@@ -111,7 +111,7 @@ impl MyCPU {
                 if let Some(filename) = args.filename.clone() {
                     filename
                 } else {
-                    String::from("cpu.txt")
+                    String::from("vm.txt")
                 },
                 args.path.clone(),
                 if let Some(log_to) = args.log_to.clone() {
@@ -132,7 +132,7 @@ impl MyCPU {
         &mut self,
         instruction: Instruction,
         program_counter: u32,
-    ) -> Result<ExecutionStep, CPUError> {
+    ) -> Result<ExecutionStep, VMError> {
         let opcode = instruction.get_opcode();
         let operands = instruction.get_operands();
         if self.debug {
@@ -181,7 +181,7 @@ impl MyCPU {
             "ret" => Ok(self.ret(operands)?),
             "jge" => Ok(self.jge(operands)?),
             "jl" => Ok(self.jl(operands)?),
-            _ => Err(CPUError::NoImplementation(operation_name.to_string())),
+            _ => Err(VMError::NoImplementation(operation_name.to_string())),
         }?;
 
         Ok(ExecutionStep {
@@ -195,11 +195,11 @@ impl MyCPU {
         })
     }
 
-    pub fn load_binary(&mut self, mut binary_bytes: Vec<u8>) -> Result<(), CPUError> {
+    pub fn load_binary(&mut self, mut binary_bytes: Vec<u8>) -> Result<(), VMError> {
         self.reset();
 
         let eof = binary_bytes.split_off(binary_bytes.len() - 4);
-        self.eof = u32::from_be_bytes(eof.try_into().map_err(|_| CPUError::VecToSlice)?);
+        self.eof = u32::from_be_bytes(eof.try_into().map_err(|_| VMError::VecToSlice)?);
 
         for byte in binary_bytes {
             self.program_memory.set(self.program_counter, byte)?;
@@ -210,7 +210,7 @@ impl MyCPU {
         Ok(())
     }
 
-    pub fn step(&mut self) -> Result<ExecutionStep, CPUError> {
+    pub fn step(&mut self) -> Result<ExecutionStep, VMError> {
         let instruction = Instruction::new(
             &self.program_memory,
             &mut self.program_counter,
@@ -219,7 +219,7 @@ impl MyCPU {
         self.execute(instruction, self.program_counter)
     }
 
-    pub fn run(&mut self) -> Result<(), CPUError> {
+    pub fn run(&mut self) -> Result<(), VMError> {
         println!("Starting execution...");
         while self.program_counter < self.program_memory.size() && self.program_counter < self.eof {
             match self.step() {
@@ -227,7 +227,7 @@ impl MyCPU {
                     if self.debug {
                         println!("{:?}", step_info);
                     }
-                },
+                }
                 Err(err) => {
                     println!("Failed to execute instruction:\n\t{}", err);
                     std::process::exit(1);
@@ -259,8 +259,8 @@ impl MyCPU {
         self.program_memory = Memory::new(256);
     }
 
-    pub fn get_state_struct(&self) -> CPUState {
-        CPUState {
+    pub fn get_state_struct(&self) -> VMState {
+        VMState {
             program_counter: self.program_counter,
             flags: self.flags,
             registers: self.register.clone(),
@@ -270,7 +270,7 @@ impl MyCPU {
         }
     }
 
-    pub fn print_registers(&self) -> Result<(), CPUError> {
+    pub fn print_registers(&self) -> Result<(), VMError> {
         for i in 0..4 {
             println!("Register {i}: {}", self.register.get(i)?);
         }

@@ -4,20 +4,20 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/Varun-Chakraborty/compiler)
 [![Release](https://github.com/Varun-Chakraborty/compiler/actions/workflows/release.yml/badge.svg)](https://github.com/Varun-Chakraborty/compiler/actions/workflows/release.yml)
 
-> **Compiler** is a **from-scratch CPU simulator** paired with a **simple assembler** that can translate custom assembly language into binary code.
+> **Compiler** is a **from-scratch VM simulator** paired with a **simple assembler** that can translate custom assembly language into binary code.
 
 ### Archived Java Version
-This project was originally started as a Java implementation to learn the basics of CPU simulation and assembly.  
+This project was originally started as a Java implementation to learn the basics of VM simulation and assembly.  
 That version has now been **archived** and preserved in the [`java-archive`](https://github.com/Varun-Chakraborty/compiler/tree/java-archive) tag.  
 The active development is now focused on the Rust port, due to its closer alignment with systems programming concepts.
 
 **Note:** Youâ€™ll need Rust installed to run these Rust-based tools.
 
 ## Overview
-- The CPU executes basic instructions like data movement, arithmetic, conditional jumps, input/output, and halting.  
-- The assembler converts human-readable assembly into a `.bin` file, which the CPU can then run.
+- The VM executes basic instructions like data movement, arithmetic, conditional jumps, input/output, and halting.  
+- The assembler converts human-readable assembly into a `.bin` file, which the VM can then run.
 
-This project is being built to learn **system software** and understand **how CPUs work** at a low level.
+This project is being built to learn **system software** and understand **how VMs work** at a low level.
 
 ---
 
@@ -27,7 +27,7 @@ This project is being built to learn **system software** and understand **how CP
   - [From Source](#from-source)
 - [Components](#components)
   - [ISA](#isa)
-  - [CPU](#cpu)
+  - [VM](#vm)
   - [Assembler](#assembler)
 - [How It Works](#how-it-works)
 - [Examples](#examples)
@@ -69,15 +69,15 @@ Example assembly codes are present in the repository in the [`examples`](./examp
     ```
     cargo run -p assembler examples/fact.asm
     ```
-5. Run the CPU:
+5. Run the VM:
     
     Using binary:
     ```
-    ./target/release/cpu output.bin
+    ./target/release/vm output.bin
     ```
     Using cargo run:
     ```
-    cargo run -p cpu output.bin
+    cargo run -p vm output.bin
     ```
 
 ## Components
@@ -94,7 +94,7 @@ Symbol table mapping for opcodes:
             <td>0</td>
             <td>HALT</td>
             <td>0</td>
-            <td>Halts the CPU.</td>
+            <td>Halts the VM.</td>
         </tr>
         <tr>
             <td>1</td>
@@ -305,7 +305,7 @@ Symbol table mapping for opcodes:
 
 For more details, refer to the [isa crate](./isa/src/lib.rs)
 
-### CPU
+### VM
 - Executes a custom instruction set.
 - Supports various opcodes as defined in [the ISA](#isa).
 - Keeps track of:
@@ -317,15 +317,15 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
 - Supports several flags:
     - **Basic Instruction**: Minimal arguments mandatorily required.
         ```
-        cargo run -p cpu output.bin
+        cargo run -p vm output.bin
         ```
     - **Debug mode**: Prints detailed execution steps.
         ```
-        cargo run -p cpu output.bin --debug
+        cargo run -p vm output.bin --debug
         ```
     - **Log**: Writes execution log to a file/console.
         ```
-        cargo run -p cpu output.bin --log=file
+        cargo run -p vm output.bin --log=file
         ```
 
 ### Assembler
@@ -395,13 +395,13 @@ For more details, refer to the [isa crate](./isa/src/lib.rs)
         ```
         This will print the ASCII representation of the binary in the console.
 
-3. **Run on CPU**
+3. **Run on VM**
 
-    Pass output.bin to the CPU simulator:
+    Pass output.bin to the VM simulator:
     ```
-    cargo run -p cpu output.bin
+    cargo run -p vm output.bin
     ```
-    The CPU will:
+    The VM will:
     - Load the program into instruction memory.
     - Fetch, decode, and execute each instruction.
     - Print output as per the instructions, asking for input or displaying the value of a register.
@@ -432,7 +432,7 @@ Output from register 0: 120
 End of Execution.
 ```
 
-You can use the `--debug` flag as defined in the [CPU section](#cpu) to run the CPU in `debug mode`
+You can use the `--debug` flag as defined in the [VM section](#vm) to run the VM in `debug mode`
 
 ---
 
@@ -459,7 +459,7 @@ _This step is optional and mainly for debugging or cross-checking the assemblerâ
 ## Motivation
 "Feels good to write 0s and 1s and see them do something."
 
-This project is a practical step toward learning system software by building a CPU from scratch, understanding the fetch-decode-execute cycle, and bridging theory with a working implementation.
+This project is a practical step toward learning system software by building a VM from scratch, understanding the fetch-decode-execute cycle, and bridging theory with a working implementation.
 
 ---
 ## License

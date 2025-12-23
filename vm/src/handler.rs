@@ -1,4 +1,4 @@
-use crate::{CPUError, MemoryAccess, MyCPU};
+use crate::{MemoryAccess, MyVM, VMError};
 use std::io::{Write, stdin, stdout};
 
 pub struct Delta {
@@ -7,8 +7,8 @@ pub struct Delta {
     pub memory_access: Option<MemoryAccess>,
 }
 
-impl MyCPU {
-    pub fn halt(&mut self, _: &[u32]) -> Result<Delta, CPUError> {
+impl MyVM {
+    pub fn halt(&mut self, _: &[u32]) -> Result<Delta, VMError> {
         self.program_counter = self.eof;
         Ok(Delta {
             registers: vec![],
@@ -17,7 +17,7 @@ impl MyCPU {
         })
     }
 
-    pub fn input(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn input(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let register = operands[0];
         let mut input = String::new();
         print!("Enter value for register {register}: ");
@@ -32,7 +32,7 @@ impl MyCPU {
         })
     }
 
-    pub fn output(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn output(&self, operands: &[u32]) -> Result<Delta, VMError> {
         let register = operands[0];
         let value = self.register.get(register)? as i8;
         println!("Output from register {register}: {value}");
@@ -44,7 +44,7 @@ impl MyCPU {
         })
     }
 
-    pub fn output_16(&mut self, _: &[u32]) -> Result<Delta, CPUError> {
+    pub fn output_16(&self, _: &[u32]) -> Result<Delta, VMError> {
         let high_byte = self.register.get(1)? as u16;
         let low_byte = self.register.get(0)? as u16;
         let value = ((high_byte << 8) | low_byte) as i16;
@@ -57,7 +57,7 @@ impl MyCPU {
         })
     }
 
-    pub fn output_char(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn output_char(&self, operands: &[u32]) -> Result<Delta, VMError> {
         let register = operands[0];
         let value = self.register.get(register)? as i8;
         print!("{}", value as u8 as char);
@@ -69,7 +69,7 @@ impl MyCPU {
         })
     }
 
-    pub fn mover(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn mover(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let register = operands[0];
         let value = if immediate {
             operands[1] as u8
@@ -92,7 +92,7 @@ impl MyCPU {
         })
     }
 
-    pub fn movem(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn movem(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let register = operands[0];
         let memory = operands[1];
         let value = self.register.get(register)?;
@@ -108,7 +108,7 @@ impl MyCPU {
         })
     }
 
-    pub fn add(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn add(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = if immediate {
@@ -130,7 +130,7 @@ impl MyCPU {
         })
     }
 
-    pub fn adc(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn adc(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = if immediate {
@@ -152,7 +152,7 @@ impl MyCPU {
         })
     }
 
-    pub fn sub(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn sub(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = if immediate {
@@ -174,7 +174,7 @@ impl MyCPU {
         })
     }
 
-    pub fn sbc(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn sbc(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = if immediate {
@@ -196,7 +196,7 @@ impl MyCPU {
         })
     }
 
-    pub fn mult(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn mult(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])? as i8 as i16;
         let num2 = if immediate {
@@ -223,7 +223,7 @@ impl MyCPU {
         })
     }
 
-    pub fn mult_16(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn mult_16(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let num1 = if immediate {
             operands[0] as i8 as i16
         } else {
@@ -249,7 +249,7 @@ impl MyCPU {
         })
     }
 
-    pub fn cmp(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, CPUError> {
+    pub fn cmp(&mut self, operands: &[u32], immediate: bool) -> Result<Delta, VMError> {
         let num1 = self.register.get(operands[0])? as i8;
         let num2 = if immediate {
             operands[1] as i8
@@ -268,7 +268,7 @@ impl MyCPU {
         })
     }
 
-    pub fn and(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn and(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = self.register.get(operands[2])?;
@@ -285,7 +285,7 @@ impl MyCPU {
         })
     }
 
-    pub fn or(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn or(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = self.register.get(operands[2])?;
@@ -302,7 +302,7 @@ impl MyCPU {
         })
     }
 
-    pub fn xor(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn xor(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let num2 = self.register.get(operands[2])?;
@@ -319,7 +319,7 @@ impl MyCPU {
         })
     }
 
-    pub fn not(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn not(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let dest = operands[0];
         let num1 = self.register.get(operands[1])?;
         let product = !num1;
@@ -335,7 +335,7 @@ impl MyCPU {
         })
     }
 
-    pub fn shl(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn shl(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let reg = operands[0];
         let value = self.register.get(reg)?;
         self.flags.carry = (value & (1 << 7)) != 0;
@@ -351,7 +351,7 @@ impl MyCPU {
         })
     }
 
-    pub fn shr(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn shr(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let reg = operands[0];
         let value = self.register.get(reg)? as i8;
         self.flags.carry = (value & 1) != 0;
@@ -367,7 +367,7 @@ impl MyCPU {
         })
     }
 
-    pub fn push(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn push(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let reg = operands[0];
         let value = self.register.get(reg)?;
         self.stack_pointer -= 1;
@@ -379,7 +379,7 @@ impl MyCPU {
         })
     }
 
-    pub fn pop(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn pop(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let reg = operands[0];
         let value = self.data_memory.get(self.stack_pointer)?;
         self.stack_pointer += 1;
@@ -391,7 +391,7 @@ impl MyCPU {
         })
     }
 
-    pub fn call(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn call(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         self.stack_pointer -= 1;
         self.data_memory
             .set(self.stack_pointer, self.program_counter as u8)?;
@@ -412,7 +412,7 @@ impl MyCPU {
         })
     }
 
-    pub fn ret(&mut self, _: &[u32]) -> Result<Delta, CPUError> {
+    pub fn ret(&mut self, _: &[u32]) -> Result<Delta, VMError> {
         let mut location: u32 = 0;
         location |= self.data_memory.get(self.stack_pointer)? as u32;
         self.stack_pointer += 1;
@@ -430,7 +430,7 @@ impl MyCPU {
         })
     }
 
-    pub fn jmp(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn jmp(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let address = operands[0];
         self.program_counter = address;
         Ok(Delta {
@@ -440,7 +440,7 @@ impl MyCPU {
         })
     }
 
-    pub fn jz(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn jz(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let address = operands[0];
         if self.flags.zero {
             self.program_counter = address;
@@ -452,7 +452,7 @@ impl MyCPU {
         })
     }
 
-    pub fn jnz(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn jnz(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let address = operands[0];
         if !self.flags.zero {
             self.program_counter = address;
@@ -464,7 +464,7 @@ impl MyCPU {
         })
     }
 
-    pub fn jge(&mut self, operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn jge(&mut self, operands: &[u32]) -> Result<Delta, VMError> {
         let address = operands[0];
         if !self.flags.zero && !self.flags.sign && self.flags.carry {
             self.program_counter = address;
@@ -476,7 +476,7 @@ impl MyCPU {
         })
     }
 
-    pub fn jl(&mut self, _operands: &[u32]) -> Result<Delta, CPUError> {
+    pub fn jl(&self, _operands: &[u32]) -> Result<Delta, VMError> {
         Ok(Delta {
             registers: vec![],
             flags: vec![],
