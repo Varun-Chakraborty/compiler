@@ -7,7 +7,7 @@ use crate::instruction::{Instruction, InstructionError};
 use crate::memory::{Memory, MemoryError};
 use crate::register::{Register, RegisterError};
 use args::Args;
-use isa::{OptSpec, OptSpecError};
+use isa::OptSpec;
 use logger::{LogTo, Logger, LoggerError};
 use std::io;
 use std::num::ParseIntError;
@@ -22,8 +22,6 @@ pub enum VMError {
     IO(#[from] io::Error),
     #[error("{0}")]
     ParseInt(#[from] ParseIntError),
-    #[error("{0}")]
-    OptSpec(#[from] OptSpecError),
     #[error("Operation {0} not implemented yet")]
     NoImplementation(String),
     #[error("{0}")]
@@ -141,9 +139,8 @@ impl MyVM {
                 program_counter, opcode, operands
             ))?;
         }
-        let operation_name = &self.opt_spec.get_by_opcode(&opcode)?.operation_name;
 
-        let changes = match operation_name.to_lowercase().as_str() {
+        let changes = match instruction.get_operation_name().to_lowercase().as_str() {
             "halt" => Ok(self.halt(operands)?),
             "in" => Ok(self.input(operands)?),
             "out" => Ok(self.output(operands)?),
@@ -181,7 +178,9 @@ impl MyVM {
             "ret" => Ok(self.ret(operands)?),
             "jge" => Ok(self.jge(operands)?),
             "jl" => Ok(self.jl(operands)?),
-            _ => Err(VMError::NoImplementation(operation_name.to_string())),
+            _ => Err(VMError::NoImplementation(
+                instruction.get_operation_name().to_string(),
+            )),
         }?;
 
         Ok(ExecutionStep {

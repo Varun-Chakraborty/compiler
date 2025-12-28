@@ -1,5 +1,7 @@
 pub mod token;
 
+use crate::lexer::token::{SourceLoc, TokenType};
+
 use self::token::{Token, TokenStream};
 use std::mem;
 
@@ -9,6 +11,10 @@ pub enum LexerError {}
 pub struct Lexer {
     tokens: TokenStream,
     token: String,
+    line: u32,
+    column: u32,
+    token_loc: SourceLoc,
+    source_lines: Vec<String>,
 }
 
 impl Lexer {
@@ -16,6 +22,10 @@ impl Lexer {
         Self {
             tokens: TokenStream::new(),
             token: String::new(),
+            line: 1,
+            column: 0,
+            token_loc: SourceLoc { line: 1, column: 1 },
+            source_lines: Vec::new(),
         }
     }
 
@@ -23,34 +33,62 @@ impl Lexer {
         if self.token.is_empty() {
             return;
         }
-        self.tokens.push(Token::Identifier(mem::take(&mut self.token)));
+        self.tokens.push(Token {
+            token_type: TokenType::Identifier,
+            value: Some(mem::take(&mut self.token)),
+            source_loc: mem::take(&mut self.token_loc),
+        });
     }
 
     pub fn push_symbol(&mut self, ch: char) {
-        self.tokens.push(Token::Symbol(ch));
+        self.tokens.push(Token {
+            token_type: TokenType::Symbol,
+            value: Some(ch.to_string()),
+            source_loc: mem::take(&mut self.token_loc),
+        });
     }
 
     pub fn push_newline(&mut self) {
-        self.tokens.push(Token::Newline);
+        self.tokens.push(Token {
+            token_type: TokenType::Newline,
+            value: None,
+            source_loc: mem::take(&mut self.token_loc),
+        });
     }
 
     pub fn push_eof(&mut self) {
-        self.tokens.push(Token::Eof);
+        self.tokens.push(Token {
+            token_type: TokenType::Eof,
+            value: None,
+            source_loc: mem::take(&mut self.token_loc),
+        });
     }
 
-    pub fn lex(&mut self, assembly_program: &str) -> Result<TokenStream, LexerError> {
+    pub fn lex(
+        &mut self,
+        assembly_program: &str,
+    ) -> Result<(TokenStream, Vec<String>), LexerError> {
         let mut is_comment = false;
+        self.source_lines = assembly_program
+            .split('\n')
+            .map(|s| s.to_string())
+            .collect();
         for char in assembly_program.chars() {
+            self.column += 1;
             if is_comment {
                 if char == '\n' {
                     is_comment = false;
                     self.push_newline();
+                    self.line += 1;
+                    self.column = 0;
                 }
                 continue;
             }
             match char {
-                ':' | ',' => {
+                ':' | ',' | '+' | '(' | ')' => {
                     self.push_identifier();
+                    self.token_loc.line = self.line;
+                    self.token_loc.column = self.column;
                     self.push_symbol(char);
                 }
                 ';' => {
@@ -61,16 +99,29 @@ impl Lexer {
                 }
                 '\n' => {
                     self.push_identifier();
+                    self.token_loc.line = self.line;
+                    self.token_loc.column = self.column;
                     self.push_newline();
+                    self.line += 1;
+                    self.column = 0;
                 }
                 _ => {
+                    if self.token.is_empty() {
+                        self.token_loc.line = self.line;
+                        self.token_loc.column = self.column;
+                    }
                     self.token.push(char);
                 }
             }
         }
         self.push_identifier();
+        self.token_loc.line = self.line;
+        self.token_loc.column = self.column + 1;
         self.push_eof();
-        Ok(mem::take(&mut self.tokens))
+        Ok((
+            mem::take(&mut self.tokens),
+            mem::take(&mut self.source_lines),
+        ))
     }
 }
 
@@ -81,13 +132,140 @@ mod tests {
     #[test]
     fn test_lexer() {
         let mut lexer = Lexer::new();
-        let tokens = lexer.lex("MOVER R1, 0").unwrap().tokens;
+        let tokens = lexer.lex("MOVER R1, 0").unwrap().0.tokens;
 
         assert_eq!(tokens.len(), 5);
-        assert_eq!(tokens[0], Token::Identifier("MOVER".to_string()));
-        assert_eq!(tokens[1], Token::Identifier("R1".to_string()));
-        assert_eq!(tokens[2], Token::Symbol(','));
-        assert_eq!(tokens[3], Token::Identifier("0".to_string()));
-        assert_eq!(tokens[4], Token::Eof);
+        println!("{:?}", tokens);
+        assert_eq!(tokens[0].token_type, TokenType::Identifier);
+        assert_eq!(tokens[0].value, Some("MOVER".to_string()));
+        assert_eq!(tokens[0].source_loc, SourceLoc { line: 1, column: 1 });
+        assert_eq!(tokens[1].token_type, TokenType::Identifier);
+        assert_eq!(tokens[1].value, Some("R1".to_string()));
+        assert_eq!(tokens[1].source_loc, SourceLoc { line: 1, column: 7 });
+        assert_eq!(tokens[2].token_type, TokenType::Symbol);
+        assert_eq!(tokens[2].value, Some(','.to_string()));
+        assert_eq!(tokens[2].source_loc, SourceLoc { line: 1, column: 9 });
+        assert_eq!(tokens[3].token_type, TokenType::Identifier);
+        assert_eq!(tokens[3].value, Some("0".to_string()));
+        assert_eq!(
+            tokens[3].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 11
+            }
+        );
+        assert_eq!(tokens[4].token_type, TokenType::Eof);
+        assert_eq!(tokens[4].value, None);
+        assert_eq!(
+            tokens[4].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 12
+            }
+        );
+    }
+
+    #[test]
+    fn test() {
+        let mut lexer = Lexer::new();
+        let tokens = lexer
+            .lex("MOVE: MOVER R0, 0\nMOVE1: MOVER R0, 0\n")
+            .unwrap()
+            .0
+            .tokens;
+        assert_eq!(tokens.len(), 15);
+        assert_eq!(tokens[0].token_type, TokenType::Identifier);
+        assert_eq!(tokens[0].value, Some("MOVE".to_string()));
+        assert_eq!(tokens[0].source_loc, SourceLoc { line: 1, column: 1 });
+        assert_eq!(tokens[1].token_type, TokenType::Symbol);
+        assert_eq!(tokens[1].value, Some(':'.to_string()));
+        assert_eq!(tokens[1].source_loc, SourceLoc { line: 1, column: 5 });
+        assert_eq!(tokens[2].token_type, TokenType::Identifier);
+        assert_eq!(tokens[2].value, Some("MOVER".to_string()));
+        assert_eq!(tokens[2].source_loc, SourceLoc { line: 1, column: 7 });
+        assert_eq!(tokens[3].token_type, TokenType::Identifier);
+        assert_eq!(tokens[3].value, Some("R0".to_string()));
+        assert_eq!(
+            tokens[3].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 13
+            }
+        );
+        assert_eq!(tokens[4].token_type, TokenType::Symbol);
+        assert_eq!(tokens[4].value, Some(','.to_string()));
+        assert_eq!(
+            tokens[4].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 15
+            }
+        );
+        assert_eq!(tokens[5].token_type, TokenType::Identifier);
+        assert_eq!(tokens[5].value, Some("0".to_string()));
+        assert_eq!(
+            tokens[5].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 17
+            }
+        );
+        assert_eq!(tokens[6].token_type, TokenType::Newline);
+        assert_eq!(tokens[6].value, None);
+        assert_eq!(
+            tokens[6].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 18
+            }
+        );
+        assert_eq!(tokens[7].token_type, TokenType::Identifier);
+        assert_eq!(tokens[7].value, Some("MOVE1".to_string()));
+        assert_eq!(tokens[7].source_loc, SourceLoc { line: 2, column: 1 });
+        assert_eq!(tokens[8].token_type, TokenType::Symbol);
+        assert_eq!(tokens[8].value, Some(':'.to_string()));
+        assert_eq!(tokens[8].source_loc, SourceLoc { line: 2, column: 6 });
+        assert_eq!(tokens[9].token_type, TokenType::Identifier);
+        assert_eq!(tokens[9].value, Some("MOVER".to_string()));
+        assert_eq!(tokens[9].source_loc, SourceLoc { line: 2, column: 8 });
+        assert_eq!(tokens[10].token_type, TokenType::Identifier);
+        assert_eq!(tokens[10].value, Some("R0".to_string()));
+        assert_eq!(
+            tokens[10].source_loc,
+            SourceLoc {
+                line: 2,
+                column: 14
+            }
+        );
+        assert_eq!(tokens[11].token_type, TokenType::Symbol);
+        assert_eq!(tokens[11].value, Some(','.to_string()));
+        assert_eq!(
+            tokens[11].source_loc,
+            SourceLoc {
+                line: 2,
+                column: 16
+            }
+        );
+        assert_eq!(tokens[12].token_type, TokenType::Identifier);
+        assert_eq!(tokens[12].value, Some("0".to_string()));
+        assert_eq!(
+            tokens[12].source_loc,
+            SourceLoc {
+                line: 2,
+                column: 18
+            }
+        );
+        assert_eq!(tokens[13].token_type, TokenType::Newline);
+        assert_eq!(tokens[13].value, None);
+        assert_eq!(
+            tokens[13].source_loc,
+            SourceLoc {
+                line: 2,
+                column: 19
+            }
+        );
+        assert_eq!(tokens[14].token_type, TokenType::Eof);
+        assert_eq!(tokens[14].value, None);
+        assert_eq!(tokens[14].source_loc, SourceLoc { line: 3, column: 1 });
     }
 }

@@ -1,8 +1,22 @@
-#[derive(Debug, Clone, Default)]
+use super::super::lexer::token::SourceLoc;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct StatementField {
+    pub value: String,
+    pub loc: SourceLoc,
+}
+
+impl std::fmt::Display for StatementField {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "'{}' at {}", self.value, self.loc)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Statement {
-    pub label: Option<String>,
-    pub operation_name: Option<String>,
-    pub operands: Option<Vec<String>>,
+    pub label: Option<StatementField>,
+    pub operation_name: Option<StatementField>,
+    pub operands: Option<Vec<StatementField>>,
 }
 
 impl Statement {
@@ -14,19 +28,19 @@ impl Statement {
         }
     }
 
-    pub fn set_label(&mut self, label: String) {
-        self.label = Some(label);
+    pub fn set_label(&mut self, value: String, loc: SourceLoc) {
+        self.label = Some(StatementField { value, loc });
     }
 
-    pub fn set_operation_name(&mut self, operation_name: String) {
-        self.operation_name = Some(operation_name);
+    pub fn set_operation_name(&mut self, value: String, loc: SourceLoc) {
+        self.operation_name = Some(StatementField { value, loc });
     }
 
-    pub fn add_operand(&mut self, operand: String) {
+    pub fn add_operand(&mut self, value: String, loc: SourceLoc) {
         if let Some(operands) = &mut self.operands {
-            operands.push(operand);
+            operands.push(StatementField { value, loc });
         } else {
-            self.operands = Some(vec![operand]);
+            self.operands = Some(vec![StatementField { value, loc }]);
         }
     }
 }

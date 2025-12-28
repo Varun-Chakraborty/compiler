@@ -1,6 +1,10 @@
-use assembler::{MyAssembler, writer::Writer};
 use args::Args;
-use std::{fs::File, io::{BufReader, Read}, process};
+use assembler::{MyAssembler, writer::Writer};
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+    process,
+};
 
 fn main() {
     let args = match Args::parse() {
@@ -37,25 +41,25 @@ fn main() {
             println!("ASCII binary would be prettified.");
         }
     }
-    
+
     let file = File::open(&input_filename).expect("Failed to open file");
     println!("Assembly file: {}", input_filename);
     let mut assembly_program = String::new();
     let mut reader = BufReader::new(file);
-    reader.read_to_string(&mut assembly_program).expect("Failed to read file");
-    
+    reader
+        .read_to_string(&mut assembly_program)
+        .expect("Failed to read file");
+
     match assembler.assemble(assembly_program.as_str()) {
-        Ok((binary, mut delimiter_table)) => {
-            match Writer::new(args.debug, args.pretty) {
-                Ok(mut writer) => writer.write(binary, &mut delimiter_table).unwrap(),
-                Err(err) => {
-                    println!("Failed to create writer:\n\t{}", err);
-                    process::exit(1);
-                }
+        Ok((binary, mut delimiter_table)) => match Writer::new(args.debug, args.pretty) {
+            Ok(mut writer) => writer.write(binary, &mut delimiter_table).unwrap(),
+            Err(err) => {
+                println!("Failed to create writer:\n\t{}", err);
+                process::exit(1);
             }
         },
         Err(err) => {
-            println!("Failed to assemble:\n\t{}", err);
+            println!("Failed to assemble:\n{}", err);
             process::exit(1);
         }
     };

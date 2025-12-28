@@ -13,15 +13,15 @@ use self::{
 
 #[derive(Debug, Error)]
 pub enum AssemblerError {
-    #[error("I/O error: {0}")]
+    #[error("I/O error:\n{0}")]
     Io(#[from] std::io::Error),
-    #[error("Unknown error: {msg}")]
+    #[error("Unknown error:\n{msg}")]
     Unknown { msg: String },
-    #[error("Lexer error: {0}")]
+    #[error("Lexer error:\n{0}")]
     Lexer(#[from] LexerError),
-    #[error("Parser error: {0}")]
+    #[error("{0}")]
     Parser(#[from] ParserError),
-    #[error("Encoder error: {0}")]
+    #[error("Encoder error:\n{0}")]
     Encoder(#[from] EncoderError),
 }
 
@@ -41,12 +41,22 @@ impl MyAssembler {
         let mut encoder = Encoder::new();
 
         println!("Assembling...");
-        let tokens = lexer.lex(assembly_program)?;
-        let instructions = parser.parse(tokens)?;
+        let (tokens, source_lines) = lexer.lex(assembly_program)?;
+        let instructions = parser.parse(tokens, &source_lines)?;
         let (binary, delimiter_table) = encoder.encode(instructions)?;
 
-        println!("{:?}", binary);
-
         Ok((binary, delimiter_table))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_assemble() {
+        let mut assembler = MyAssembler::new().unwrap();
+        let (binary, _) = assembler.assemble("MOVE:\nMOVER R0, 0").unwrap();
+        assert_eq!(binary, vec![4, 0, 0, 0, 0, 12]);
     }
 }

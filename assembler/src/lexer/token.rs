@@ -1,12 +1,31 @@
 #[derive(Debug, Clone, PartialEq)]
-pub enum Token {
-    Identifier(String),
-    Symbol(char),
+pub enum TokenType {
+    Identifier,
+    Symbol,
     Newline,
     Eof,
 }
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default, PartialEq, Copy, Eq, Hash)]
+pub struct SourceLoc {
+    pub line: u32,
+    pub column: u32,
+}
+
+impl std::fmt::Display for SourceLoc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "line {}, column {}", self.line, self.column)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Token {
+    pub value: Option<String>,
+    pub token_type: TokenType,
+    pub source_loc: SourceLoc,
+}
+
+#[derive(Default, Debug)]
 pub struct TokenStream {
     pub tokens: Vec<Token>,
     pub index: usize,
@@ -14,7 +33,10 @@ pub struct TokenStream {
 
 impl TokenStream {
     pub fn new() -> Self {
-        Self { tokens: Vec::new(), index: 0 }
+        Self {
+            tokens: Vec::new(),
+            index: 0,
+        }
     }
 
     pub fn push(&mut self, token: Token) {
@@ -32,16 +54,25 @@ impl TokenStream {
     pub fn seek_as_symbol(&self, at: u32) -> Option<char> {
         let token = self.seek(at);
         match token {
-            Some(Token::Symbol(symbol)) => Some(*symbol),
-            _ => None,
+            Some(token) => match token.token_type {
+                TokenType::Symbol => match &token.value {
+                    Some(value) => Some(value.chars().next().unwrap()),
+                    None => None,
+                },
+                _ => None,
+            },
+            None => None,
         }
     }
 
     pub fn is_eof(&self, at: u32) -> bool {
         let token = self.seek(at);
         match token {
-            Some(Token::Eof) => true,
-            _ => false,
+            Some(token) => match token.token_type {
+                TokenType::Eof => true,
+                _ => false,
+            },
+            None => false,
         }
     }
 

@@ -1,4 +1,5 @@
 pub mod instruction;
+mod render_error;
 mod semantic_parser;
 mod syntactic_parser;
 
@@ -13,9 +14,9 @@ use crate::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParserError {
-    #[error("Syntactic parsing error: {0}")]
+    #[error("Syntactic parsing error:\n{0}")]
     SyntacticParsing(#[from] SyntacticError),
-    #[error("Semantic parsing error: {0}")]
+    #[error("Semantic parsing error:\n{0}")]
     SemanticParsing(#[from] SemanticError),
 }
 
@@ -35,44 +36,82 @@ impl Parser {
     pub fn parse(
         &mut self,
         tokens: TokenStream,
+        source_lines: &Vec<String>,
     ) -> Result<Vec<Instruction>, ParserError> {
-        let statements = self.syntactic_parser.parse(tokens)?;
-        let instructions = self.semantic_parser.parse(statements)?;
+        let statements = self.syntactic_parser.parse(tokens, source_lines)?;
+        let instructions = self.semantic_parser.parse(statements, source_lines)?;
         Ok(instructions)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{super::lexer::token::Token, Parser, TokenStream, instruction::InstructionField};
+    use super::{
+        super::lexer::token::{SourceLoc, Token, TokenStream, TokenType},
+        Parser,
+        instruction::InstructionField,
+    };
 
     #[test]
     fn test_parser() {
-        let mut parser = Parser::new();
         let mut tokens = TokenStream::new();
-        tokens.push(Token::Identifier("MOVE".to_string()));
-        tokens.push(Token::Symbol(':'));
-        tokens.push(Token::Identifier("MOVER".to_string()));
-        tokens.push(Token::Identifier("R0".to_string()));
-        tokens.push(Token::Symbol(','));
-        tokens.push(Token::Identifier("0".to_string()));
-        tokens.push(Token::Newline);
-        tokens.push(Token::Identifier("MOVE1".to_string()));
-        tokens.push(Token::Symbol(':'));
-        tokens.push(Token::Identifier("MOVER".to_string()));
-        tokens.push(Token::Identifier("R0".to_string()));
-        tokens.push(Token::Symbol(','));
-        tokens.push(Token::Identifier("0".to_string()));
-        tokens.push(Token::Newline);
-        tokens.push(Token::Eof);
-        let instructions = parser.parse(tokens).unwrap();
-        assert_eq!(instructions.len(), 2);
+
+        tokens.push(Token {
+            token_type: TokenType::Identifier,
+            value: Some("MOVE".to_string()),
+            source_loc: SourceLoc { line: 1, column: 1 },
+        });
+        tokens.push(Token {
+            token_type: TokenType::Symbol,
+            value: Some(":".to_string()),
+            source_loc: SourceLoc { line: 1, column: 6 },
+        });
+        tokens.push(Token {
+            token_type: TokenType::Newline,
+            value: None,
+            source_loc: SourceLoc { line: 1, column: 7 },
+        });
+        tokens.push(Token {
+            token_type: TokenType::Identifier,
+            value: Some("MOVER".to_string()),
+            source_loc: SourceLoc { line: 2, column: 1 },
+        });
+        tokens.push(Token {
+            token_type: TokenType::Identifier,
+            value: Some("R0".to_string()),
+            source_loc: SourceLoc { line: 2, column: 7 },
+        });
+        tokens.push(Token {
+            token_type: TokenType::Symbol,
+            value: Some(",".to_string()),
+            source_loc: SourceLoc { line: 2, column: 9 },
+        });
+        tokens.push(Token {
+            token_type: TokenType::Identifier,
+            value: Some("0".to_string()),
+            source_loc: SourceLoc {
+                line: 2,
+                column: 11,
+            },
+        });
+        tokens.push(Token {
+            token_type: TokenType::Eof,
+            value: None,
+            source_loc: SourceLoc {
+                line: 2,
+                column: 12,
+            },
+        });
+        let mut parser = Parser::new();
+        let source_lines = ["", ""].map(|s| s.to_string()).to_vec();
+        let instructions = parser.parse(tokens, &source_lines).unwrap();
+        assert_eq!(instructions.len(), 1);
         let instruction = &instructions[0];
         assert_eq!(
             instruction.opcode,
             InstructionField {
                 value: 1,
-                bit_count: 4
+                bit_count: 6
             }
         );
         let operands = instruction.operands.as_ref().unwrap();

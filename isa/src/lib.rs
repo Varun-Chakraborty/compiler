@@ -52,16 +52,6 @@ impl Operation {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum OptSpecError {
-    #[error("Invalid opcode: {0}")]
-    InvalidCode(u32),
-    #[error("Invalid operation name: '{0}'")]
-    InvalidOptName(String),
-    #[error("{0}")]
-    OperationError(String),
-}
-
 pub struct OptSpec {
     pub opcode_bit_count: u8,
     opttab: Vec<Operation>,
@@ -132,22 +122,14 @@ impl OptSpec {
         }
     }
 
-    pub fn get_by_opcode(&self, opcode: &u32) -> Result<&Operation, OptSpecError> {
-        return match self.opttab.iter().find(|op| op.opcode == *opcode) {
-            Some(op) => Ok(op),
-            None => Err(OptSpecError::InvalidCode(*opcode)),
-        };
+    pub fn get_by_opcode(&self, opcode: &u32) -> Option<&Operation> {
+        self.opttab.iter().find(|op| op.opcode == *opcode)
     }
 
-    pub fn get_by_operation_name(&self, operation_name: &str) -> Result<&Operation, OptSpecError> {
-        return match self
-            .opttab
+    pub fn get_by_operation_name(&self, operation_name: &str) -> Option<&Operation> {
+        self.opttab
             .iter()
             .find(|op| op.operation_name == operation_name)
-        {
-            Some(op) => Ok(op),
-            None => Err(OptSpecError::InvalidOptName(operation_name.into())),
-        };
     }
 
     pub fn contains_opcode(&self, opcode: u32) -> bool {
