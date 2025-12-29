@@ -131,12 +131,4 @@ impl OptSpec {
             .iter()
             .find(|op| op.operation_name == operation_name)
     }
-
-    pub fn contains_opcode(&self, opcode: u32) -> bool {
-        return self.opttab.iter().any(|op| op.opcode == opcode);
-    }
-
-    pub fn contains_operation_name(&self, operation: &str) -> bool {
-        return self.opttab.iter().any(|op| op.operation_name == operation);
-    }
 }

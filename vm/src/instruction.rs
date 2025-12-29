@@ -1,5 +1,4 @@
 use crate::memory::{Memory, MemoryError};
-use isa::OptSpecError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum InstructionError {
@@ -7,13 +6,12 @@ pub enum InstructionError {
     MemoryError(#[from] MemoryError),
     #[error("Invalid opcode: {0}")]
     InvalidOpcode(u32),
-    #[error("{0}")]
-    OperationError(#[from] OptSpecError),
 }
 
 #[derive(Debug)]
 pub struct Instruction {
     opcode: u32,
+    operation_name: String,
     operands: Vec<u32>,
 }
 
@@ -37,11 +35,12 @@ impl Instruction {
         let opcode = get_bits(memory, *pc, optspec.opcode_bit_count as u32)?;
         *pc += optspec.opcode_bit_count as u32;
 
-        if !optspec.contains_opcode(opcode) {
-            return Err(InstructionError::InvalidOpcode(opcode));
-        }
+        let operation = match optspec.get_by_opcode(&opcode) {
+            Some(operation) => operation,
+            None => return Err(InstructionError::InvalidOpcode(opcode)),
+        };
 
-        let operands = optspec.get_by_opcode(&opcode)?.operands.iter().fold(
+        let operands = operation.operands.iter().fold(
             Ok(Vec::new()),
             |acc: Result<Vec<u32>, InstructionError>, operand_spec| {
                 let mut acc = acc?;
@@ -52,7 +51,11 @@ impl Instruction {
             },
         )?;
 
-        Ok(Self { opcode, operands })
+        Ok(Self {
+            opcode,
+            operands,
+            operation_name: operation.operation_name.clone(),
+        })
     }
 
     pub fn get_opcode(&self) -> u32 {
@@ -61,5 +64,9 @@ impl Instruction {
 
     pub fn get_operands(&self) -> &Vec<u32> {
         return &self.operands;
+    }
+
+    pub fn get_operation_name(&self) -> &String {
+        return &self.operation_name;
     }
 }
