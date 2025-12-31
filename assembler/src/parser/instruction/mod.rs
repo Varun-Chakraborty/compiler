@@ -8,7 +8,7 @@ pub struct StatementField {
 
 impl std::fmt::Display for StatementField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "'{}' at {}", self.value, self.loc)
+        write!(f, "{} at {}", self.value, self.loc)
     }
 }
 

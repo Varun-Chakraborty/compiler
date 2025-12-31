@@ -2,6 +2,7 @@
 pub enum TokenType {
     Identifier,
     Symbol,
+    Whitespace,
     Newline,
     Eof,
 }
@@ -65,18 +66,15 @@ impl TokenStream {
         }
     }
 
-    pub fn is_eof(&self, at: u32) -> bool {
-        let token = self.seek(at);
-        match token {
-            Some(token) => match token.token_type {
-                TokenType::Eof => true,
-                _ => false,
-            },
-            None => false,
-        }
-    }
-
     pub fn next(&mut self) {
         self.index += 1;
+    }
+
+    pub fn remove(&mut self) -> Token {
+        self.tokens.remove(self.index)
+    }
+
+    pub fn reset(&mut self) {
+        self.index = 0;
     }
 }

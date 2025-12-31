@@ -48,6 +48,14 @@ impl Lexer {
         });
     }
 
+    pub fn push_whitespace(&mut self) {
+        self.tokens.push(Token {
+            token_type: TokenType::Whitespace,
+            value: None,
+            source_loc: mem::take(&mut self.token_loc),
+        });
+    }
+
     pub fn push_newline(&mut self) {
         self.tokens.push(Token {
             token_type: TokenType::Newline,
@@ -78,6 +86,9 @@ impl Lexer {
             if is_comment {
                 if char == '\n' {
                     is_comment = false;
+                    self.push_identifier();
+                    self.token_loc.line = self.line;
+                    self.token_loc.column = self.column;
                     self.push_newline();
                     self.line += 1;
                     self.column = 0;
@@ -85,7 +96,7 @@ impl Lexer {
                 continue;
             }
             match char {
-                ':' | ',' | '+' | '(' | ')' => {
+                ':' | ',' | '+' | '(' | ')' | '&' => {
                     self.push_identifier();
                     self.token_loc.line = self.line;
                     self.token_loc.column = self.column;
@@ -96,6 +107,9 @@ impl Lexer {
                 }
                 ' ' | '\t' => {
                     self.push_identifier();
+                    self.token_loc.line = self.line;
+                    self.token_loc.column = self.column;
+                    self.push_whitespace();
                 }
                 '\n' => {
                     self.push_identifier();
@@ -134,30 +148,48 @@ mod tests {
         let mut lexer = Lexer::new();
         let tokens = lexer.lex("MOVER R1, 0").unwrap().0.tokens;
 
-        assert_eq!(tokens.len(), 5);
-        println!("{:?}", tokens);
+        assert_eq!(tokens.len(), 7);
+
         assert_eq!(tokens[0].token_type, TokenType::Identifier);
         assert_eq!(tokens[0].value, Some("MOVER".to_string()));
         assert_eq!(tokens[0].source_loc, SourceLoc { line: 1, column: 1 });
-        assert_eq!(tokens[1].token_type, TokenType::Identifier);
-        assert_eq!(tokens[1].value, Some("R1".to_string()));
-        assert_eq!(tokens[1].source_loc, SourceLoc { line: 1, column: 7 });
-        assert_eq!(tokens[2].token_type, TokenType::Symbol);
-        assert_eq!(tokens[2].value, Some(','.to_string()));
-        assert_eq!(tokens[2].source_loc, SourceLoc { line: 1, column: 9 });
-        assert_eq!(tokens[3].token_type, TokenType::Identifier);
-        assert_eq!(tokens[3].value, Some("0".to_string()));
+
+        assert_eq!(tokens[1].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[1].value, None);
+        assert_eq!(tokens[1].source_loc, SourceLoc { line: 1, column: 6 });
+
+        assert_eq!(tokens[2].token_type, TokenType::Identifier);
+        assert_eq!(tokens[2].value, Some("R1".to_string()));
+        assert_eq!(tokens[2].source_loc, SourceLoc { line: 1, column: 7 });
+
+        assert_eq!(tokens[3].token_type, TokenType::Symbol);
+        assert_eq!(tokens[3].value, Some(','.to_string()));
+        assert_eq!(tokens[3].source_loc, SourceLoc { line: 1, column: 9 });
+
+        assert_eq!(tokens[4].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[4].value, None);
         assert_eq!(
-            tokens[3].source_loc,
+            tokens[4].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 10
+            }
+        );
+
+        assert_eq!(tokens[5].token_type, TokenType::Identifier);
+        assert_eq!(tokens[5].value, Some("0".to_string()));
+        assert_eq!(
+            tokens[5].source_loc,
             SourceLoc {
                 line: 1,
                 column: 11
             }
         );
-        assert_eq!(tokens[4].token_type, TokenType::Eof);
-        assert_eq!(tokens[4].value, None);
+
+        assert_eq!(tokens[6].token_type, TokenType::Eof);
+        assert_eq!(tokens[6].value, None);
         assert_eq!(
-            tokens[4].source_loc,
+            tokens[6].source_loc,
             SourceLoc {
                 line: 1,
                 column: 12
@@ -169,103 +201,166 @@ mod tests {
     fn test() {
         let mut lexer = Lexer::new();
         let tokens = lexer
-            .lex("MOVE: MOVER R0, 0\nMOVE1: MOVER R0, 0\n")
+            .lex("MOVE: MOVER R0, 0\nMOVE1: MOVER R0, 0;comment\n")
             .unwrap()
             .0
             .tokens;
-        assert_eq!(tokens.len(), 15);
+        assert_eq!(tokens.len(), 21);
+
         assert_eq!(tokens[0].token_type, TokenType::Identifier);
         assert_eq!(tokens[0].value, Some("MOVE".to_string()));
         assert_eq!(tokens[0].source_loc, SourceLoc { line: 1, column: 1 });
+
         assert_eq!(tokens[1].token_type, TokenType::Symbol);
         assert_eq!(tokens[1].value, Some(':'.to_string()));
         assert_eq!(tokens[1].source_loc, SourceLoc { line: 1, column: 5 });
-        assert_eq!(tokens[2].token_type, TokenType::Identifier);
-        assert_eq!(tokens[2].value, Some("MOVER".to_string()));
-        assert_eq!(tokens[2].source_loc, SourceLoc { line: 1, column: 7 });
+
+        assert_eq!(tokens[2].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[2].value, None);
+        assert_eq!(tokens[2].source_loc, SourceLoc { line: 1, column: 6 });
+
         assert_eq!(tokens[3].token_type, TokenType::Identifier);
-        assert_eq!(tokens[3].value, Some("R0".to_string()));
+        assert_eq!(tokens[3].value, Some("MOVER".to_string()));
+        assert_eq!(tokens[3].source_loc, SourceLoc { line: 1, column: 7 });
+
+        assert_eq!(tokens[4].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[4].value, None);
         assert_eq!(
-            tokens[3].source_loc,
+            tokens[4].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 12
+            }
+        );
+
+        assert_eq!(tokens[5].token_type, TokenType::Identifier);
+        assert_eq!(tokens[5].value, Some("R0".to_string()));
+        assert_eq!(
+            tokens[5].source_loc,
             SourceLoc {
                 line: 1,
                 column: 13
             }
         );
-        assert_eq!(tokens[4].token_type, TokenType::Symbol);
-        assert_eq!(tokens[4].value, Some(','.to_string()));
+
+        assert_eq!(tokens[6].token_type, TokenType::Symbol);
+        assert_eq!(tokens[6].value, Some(','.to_string()));
         assert_eq!(
-            tokens[4].source_loc,
+            tokens[6].source_loc,
             SourceLoc {
                 line: 1,
                 column: 15
             }
         );
-        assert_eq!(tokens[5].token_type, TokenType::Identifier);
-        assert_eq!(tokens[5].value, Some("0".to_string()));
+
+        assert_eq!(tokens[7].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[7].value, None);
         assert_eq!(
-            tokens[5].source_loc,
+            tokens[7].source_loc,
+            SourceLoc {
+                line: 1,
+                column: 16
+            }
+        );
+
+        assert_eq!(tokens[8].token_type, TokenType::Identifier);
+        assert_eq!(tokens[8].value, Some("0".to_string()));
+        assert_eq!(
+            tokens[8].source_loc,
             SourceLoc {
                 line: 1,
                 column: 17
             }
         );
-        assert_eq!(tokens[6].token_type, TokenType::Newline);
-        assert_eq!(tokens[6].value, None);
+
+        assert_eq!(tokens[9].token_type, TokenType::Newline);
+        assert_eq!(tokens[9].value, None);
         assert_eq!(
-            tokens[6].source_loc,
+            tokens[9].source_loc,
             SourceLoc {
                 line: 1,
                 column: 18
             }
         );
-        assert_eq!(tokens[7].token_type, TokenType::Identifier);
-        assert_eq!(tokens[7].value, Some("MOVE1".to_string()));
-        assert_eq!(tokens[7].source_loc, SourceLoc { line: 2, column: 1 });
-        assert_eq!(tokens[8].token_type, TokenType::Symbol);
-        assert_eq!(tokens[8].value, Some(':'.to_string()));
-        assert_eq!(tokens[8].source_loc, SourceLoc { line: 2, column: 6 });
-        assert_eq!(tokens[9].token_type, TokenType::Identifier);
-        assert_eq!(tokens[9].value, Some("MOVER".to_string()));
-        assert_eq!(tokens[9].source_loc, SourceLoc { line: 2, column: 8 });
+
         assert_eq!(tokens[10].token_type, TokenType::Identifier);
-        assert_eq!(tokens[10].value, Some("R0".to_string()));
+        assert_eq!(tokens[10].value, Some("MOVE1".to_string()));
+        assert_eq!(tokens[10].source_loc, SourceLoc { line: 2, column: 1 });
+
+        assert_eq!(tokens[11].token_type, TokenType::Symbol);
+        assert_eq!(tokens[11].value, Some(':'.to_string()));
+        assert_eq!(tokens[11].source_loc, SourceLoc { line: 2, column: 6 });
+
+        assert_eq!(tokens[12].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[12].value, None);
+        assert_eq!(tokens[12].source_loc, SourceLoc { line: 2, column: 7 });
+
+        assert_eq!(tokens[13].token_type, TokenType::Identifier);
+        assert_eq!(tokens[13].value, Some("MOVER".to_string()));
+        assert_eq!(tokens[13].source_loc, SourceLoc { line: 2, column: 8 });
+
+        assert_eq!(tokens[14].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[14].value, None);
         assert_eq!(
-            tokens[10].source_loc,
+            tokens[14].source_loc,
+            SourceLoc {
+                line: 2,
+                column: 13
+            }
+        );
+
+        assert_eq!(tokens[15].token_type, TokenType::Identifier);
+        assert_eq!(tokens[15].value, Some("R0".to_string()));
+        assert_eq!(
+            tokens[15].source_loc,
             SourceLoc {
                 line: 2,
                 column: 14
             }
         );
-        assert_eq!(tokens[11].token_type, TokenType::Symbol);
-        assert_eq!(tokens[11].value, Some(','.to_string()));
+
+        assert_eq!(tokens[16].token_type, TokenType::Symbol);
+        assert_eq!(tokens[16].value, Some(','.to_string()));
         assert_eq!(
-            tokens[11].source_loc,
+            tokens[16].source_loc,
             SourceLoc {
                 line: 2,
                 column: 16
             }
         );
-        assert_eq!(tokens[12].token_type, TokenType::Identifier);
-        assert_eq!(tokens[12].value, Some("0".to_string()));
+
+        assert_eq!(tokens[17].token_type, TokenType::Whitespace);
+        assert_eq!(tokens[17].value, None);
         assert_eq!(
-            tokens[12].source_loc,
+            tokens[17].source_loc,
+            SourceLoc {
+                line: 2,
+                column: 17
+            }
+        );
+
+        assert_eq!(tokens[18].token_type, TokenType::Identifier);
+        assert_eq!(tokens[18].value, Some("0".to_string()));
+        assert_eq!(
+            tokens[18].source_loc,
             SourceLoc {
                 line: 2,
                 column: 18
             }
         );
-        assert_eq!(tokens[13].token_type, TokenType::Newline);
-        assert_eq!(tokens[13].value, None);
+
+        assert_eq!(tokens[19].token_type, TokenType::Newline);
+        assert_eq!(tokens[19].value, None);
         assert_eq!(
-            tokens[13].source_loc,
+            tokens[19].source_loc,
             SourceLoc {
                 line: 2,
-                column: 19
+                column: 27
             }
         );
-        assert_eq!(tokens[14].token_type, TokenType::Eof);
-        assert_eq!(tokens[14].value, None);
-        assert_eq!(tokens[14].source_loc, SourceLoc { line: 3, column: 1 });
+
+        assert_eq!(tokens[20].token_type, TokenType::Eof);
+        assert_eq!(tokens[20].value, None);
+        assert_eq!(tokens[20].source_loc, SourceLoc { line: 3, column: 1 });
     }
 }

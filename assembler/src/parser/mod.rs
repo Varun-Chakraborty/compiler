@@ -1,5 +1,4 @@
 pub mod instruction;
-mod render_error;
 mod semantic_parser;
 mod syntactic_parser;
 

@@ -3,8 +3,8 @@ use regex::Regex;
 use std::collections::HashMap;
 
 use super::{
+    super::render_error::{Diagnostic, render_error},
     instruction::{Instruction, InstructionField, Statement, StatementField},
-    render_error::{Diagnostic, render_error},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -350,10 +350,10 @@ impl SemanticParser {
                         return Err(SemanticError::LabelAlreadyInUse(label.to_string()));
                     }
                     false => {
-                        self.symtab.insert(label.to_string(), self.location_counter);
+                        self.symtab
+                            .insert(label.value.clone(), self.location_counter);
 
                         // patch
-
                         if let Some(tii_entries) = self.tii.get(label) {
                             for entry in tii_entries {
                                 instructions[entry.instruction_number]
@@ -362,6 +362,9 @@ impl SemanticParser {
                                     .unwrap()[entry.operand_number]
                                     .value = self.location_counter;
                             }
+
+                            // remove the entry from the tii
+                            self.tii.remove(label);
                         };
                     }
                 };

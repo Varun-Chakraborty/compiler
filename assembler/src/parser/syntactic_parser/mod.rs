@@ -1,9 +1,11 @@
 use std::mem;
 
 use super::{
-    super::lexer::token::{TokenStream, TokenType},
+    super::{
+        lexer::token::{TokenStream, TokenType},
+        render_error::{Diagnostic, render_error},
+    },
     instruction::Statement,
-    render_error::{Diagnostic, render_error},
 };
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -37,11 +39,8 @@ impl SyntacticParser {
     ) -> Result<Vec<Statement>, SyntacticError> {
         let mut statement = Statement::new();
         let mut state = DFAState::Start;
-        while !tokens.is_eof(0) {
-            let current_token = match tokens.seek(0) {
-                Some(token) => token,
-                None => break,
-            };
+        loop {
+            let current_token = tokens.seek(0).unwrap();
             match current_token.token_type {
                 TokenType::Identifier => {
                     match state {
@@ -136,43 +135,48 @@ impl SyntacticParser {
                     }
                 }
                 TokenType::Newline => {
-                    if state == DFAState::ExpectOperand {
-                        return Err(SyntacticError::UnexpectedToken {
-                            message: render_error(Diagnostic {
-                                headline: "An identifier is expected after comma".to_string(),
-                                line: current_token.source_loc.line,
-                                source_line: &source_lines
-                                    [current_token.source_loc.line as usize - 1],
-                                column: current_token.source_loc.column,
-                                help: None,
-                            }),
-                        });
-                    }
-                    if state != DFAState::Start {
-                        self.statements.push(statement);
+                    match state {
+                        DFAState::ExpectOperand => {
+                            return Err(SyntacticError::UnexpectedToken {
+                                message: render_error(Diagnostic {
+                                    headline: "An identifier is expected after comma".to_string(),
+                                    line: current_token.source_loc.line,
+                                    source_line: &source_lines
+                                        [current_token.source_loc.line as usize - 1],
+                                    column: current_token.source_loc.column,
+                                    help: None,
+                                }),
+                            });
+                        }
+                        DFAState::Start => {}
+                        _ => self.statements.push(statement),
                     }
                     statement = Statement::new();
                     tokens.next();
                     state = DFAState::Start;
                 }
-                _ => {}
+                TokenType::Eof => {
+                    match state {
+                        DFAState::ExpectOperand => {
+                            return Err(SyntacticError::UnexpectedToken {
+                                message: render_error(Diagnostic {
+                                    headline: "An identifier is expected after comma".to_string(),
+                                    line: current_token.source_loc.line,
+                                    source_line: &source_lines
+                                        [current_token.source_loc.line as usize - 1],
+                                    column: current_token.source_loc.column,
+                                    help: None,
+                                }),
+                            });
+                        }
+                        DFAState::Start => {}
+                        _ => self.statements.push(statement),
+                    }
+                    return Ok(mem::take(&mut self.statements));
+                }
+                _ => tokens.next(),
             }
         }
-        let current_token = tokens.seek(0).unwrap();
-        if state == DFAState::ExpectOperand {
-            return Err(SyntacticError::UnexpectedToken {
-                message: render_error(Diagnostic {
-                    headline: "An identifier is expected after comma".to_string(),
-                    line: current_token.source_loc.line,
-                    source_line: &source_lines[current_token.source_loc.line as usize - 1],
-                    column: current_token.source_loc.column,
-                    help: None,
-                }),
-            });
-        } else if state != DFAState::Start {
-            self.statements.push(statement);
-        }
-        return Ok(mem::take(&mut self.statements));
     }
 }
 
